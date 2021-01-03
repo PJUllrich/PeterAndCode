@@ -53,7 +53,8 @@ defmodule App.AccountsTest do
 
       assert %{
                password: ["can't be blank"],
-               email: ["can't be blank"]
+               email: ["can't be blank"],
+               name: ["can't be blank"]
              } = errors_on(changeset)
     end
 
@@ -85,8 +86,13 @@ defmodule App.AccountsTest do
 
     test "registers users with a hashed password" do
       email = unique_user_email()
-      {:ok, user} = Accounts.register_user(%{email: email, password: valid_user_password()})
+      name = user_name()
+
+      {:ok, user} =
+        Accounts.register_user(%{email: email, name: name, password: valid_user_password()})
+
       assert user.email == email
+      assert user.name == name
       assert is_binary(user.hashed_password)
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
@@ -96,19 +102,25 @@ defmodule App.AccountsTest do
   describe "change_user_registration/2" do
     test "returns a changeset" do
       assert %Ecto.Changeset{} = changeset = Accounts.change_user_registration(%User{})
-      assert changeset.required == [:password, :email]
+      assert changeset.required == [:password, :email, :name]
     end
 
     test "allows fields to be set" do
       email = unique_user_email()
+      name = user_name()
       password = valid_user_password()
 
       changeset =
-        Accounts.change_user_registration(%User{}, %{"email" => email, "password" => password})
+        Accounts.change_user_registration(%User{}, %{
+          "email" => email,
+          "password" => password,
+          "name" => name
+        })
 
       assert changeset.valid?
       assert get_change(changeset, :email) == email
       assert get_change(changeset, :password) == password
+      assert get_change(changeset, :name) == name
       assert is_nil(get_change(changeset, :hashed_password))
     end
   end

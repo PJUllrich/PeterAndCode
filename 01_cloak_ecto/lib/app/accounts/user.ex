@@ -33,6 +33,7 @@ defmodule App.Accounts.User do
   def registration_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email, :password, :name])
+    |> validate_required([:name])
     |> validate_email()
     |> validate_password(opts)
   end
