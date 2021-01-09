@@ -1,4 +1,4 @@
-defmodule App.DataCase do
+defmodule Support.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -23,7 +23,7 @@ defmodule App.DataCase do
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import App.DataCase
+      import Support.DataCase
     end
   end
 
