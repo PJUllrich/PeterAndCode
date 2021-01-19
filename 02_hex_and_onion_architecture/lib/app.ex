@@ -32,6 +32,7 @@ defmodule App do
     quote do
       alias App.Repo
       import Ecto.Query, warn: false
+      import Ecto.Changeset
     end
   end
 
