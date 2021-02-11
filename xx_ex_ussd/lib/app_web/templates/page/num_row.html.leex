@@ -1,0 +1,5 @@
+<div class="flex num-row">
+<%= for value <- @values do %>
+    <div class="phone-button" phx-click="button_clicked" phx-value-value=<%= value %>><%= value %></div>
+<% end %>
+</div>
