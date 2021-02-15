@@ -7,18 +7,13 @@
 # General application configuration
 use Mix.Config
 
-config :app,
-  ecto_repos: [App.Repo]
-
-config :ex_ussd, :gateway, AfricasTalking
-
 # Configures the endpoint
 config :app, AppWeb.Endpoint,
   url: [host: "localhost"],
-  secret_key_base: "2RWeQoiI9Oik6BJ3le6DUR0feNeck2rFyDurbzyIj/JfbDD3nL3r7Jk8kNcgQhKV",
-  render_errors: [view: AppWeb.ErrorView, accepts: ~w(html json), layout: false],
+  secret_key_base: "3PdUemfBrX7aJXqxVnAXfE0kYAOCBKeCrTVhzlOXUxcYWbnIkoVyzfvqMkonZ8lL",
+  render_errors: [view: AppWeb.ErrorView, accepts: ~w(json), layout: false],
   pubsub_server: App.PubSub,
-  live_view: [signing_salt: "o2euNBG0"]
+  live_view: [signing_salt: "YXXGyaHC"]
 
 # Configures Elixir's Logger
 config :logger, :console,

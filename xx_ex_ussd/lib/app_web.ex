@@ -22,7 +22,6 @@ defmodule AppWeb do
       use Phoenix.Controller, namespace: AppWeb
 
       import Plug.Conn
-      import AppWeb.Gettext
       alias AppWeb.Router.Helpers, as: Routes
     end
   end
@@ -42,54 +41,27 @@ defmodule AppWeb do
     end
   end
 
-  def live_view do
-    quote do
-      use Phoenix.LiveView,
-        layout: {AppWeb.LayoutView, "live.html"},
-        container: {:div, class: "live-view-wrapper"}
-
-      unquote(view_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent
-
-      unquote(view_helpers())
-    end
-  end
-
   def router do
     quote do
       use Phoenix.Router
 
       import Plug.Conn
       import Phoenix.Controller
-      import Phoenix.LiveView.Router
     end
   end
 
   def channel do
     quote do
       use Phoenix.Channel
-      import AppWeb.Gettext
     end
   end
 
   defp view_helpers do
     quote do
-      # Use all HTML functionality (forms, tags, etc)
-      use Phoenix.HTML
-
-      # Import LiveView helpers (live_render, live_component, live_patch, etc)
-      import Phoenix.LiveView.Helpers
-
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
 
       import AppWeb.ErrorHelpers
-      import AppWeb.Gettext
       alias AppWeb.Router.Helpers, as: Routes
     end
   end
