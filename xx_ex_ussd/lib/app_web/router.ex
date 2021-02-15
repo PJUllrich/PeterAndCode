@@ -10,8 +10,4 @@ defmodule AppWeb.Router do
 
      post "/callback", CallbackController, :callback
   end
-
-  scope "/" do
-    get "/", ExUssdSimulatorWeb.PageLive, :index
-  end
 end

@@ -10,12 +10,6 @@ defmodule AppWeb.Endpoint do
     signing_salt: "we8N9jCm"
   ]
 
-  socket "/socket", AppWeb.UserSocket,
-    websocket: true,
-    longpoll: false
-
-  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
-
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phx.digest
@@ -31,10 +25,6 @@ defmodule AppWeb.Endpoint do
   if code_reloading? do
     plug Phoenix.CodeReloader
   end
-
-  plug Phoenix.LiveDashboard.RequestLogger,
-    param_key: "request_logger",
-    cookie_key: "request_logger"
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
