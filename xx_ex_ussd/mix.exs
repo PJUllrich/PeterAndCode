@@ -40,7 +40,7 @@ defmodule App.MixProject do
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
       {:ex_ussd, "~> 0.1.2"},
-      {:ex_ussd_simulator, path: "../../ex_ussd_simulator"}
+      {:ex_ussd_simulator, "~> 0.1.0", only: :dev}
     ]
   end
 
