@@ -34,12 +34,14 @@ defmodule App.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.5.7"},
+      {:phoenix_live_view, "~> 0.15.0"},
+      {:floki, ">= 0.27.0", only: :test},
+      {:phoenix_html, "~> 2.11"},
+      {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:telemetry_metrics, "~> 0.4"},
       {:telemetry_poller, "~> 0.4"},
       {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.0"},
-      {:ex_ussd, "~> 0.1.2"},
-      {:ex_ussd_simulator, "~> 0.1.3", only: :dev}
+      {:plug_cowboy, "~> 2.0"}
     ]
   end
 
@@ -51,7 +53,7 @@ defmodule App.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get"]
+      setup: ["deps.get", "cmd npm install --prefix assets"]
     ]
   end
 end
