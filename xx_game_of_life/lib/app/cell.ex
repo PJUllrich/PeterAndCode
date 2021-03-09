@@ -39,7 +39,7 @@ defmodule Cell do
     {:noreply, state}
   end
 
-  def handle_info(:alive, %{neighbours: neighbours} = state) do
+  def handle_info({:alive, _x, _y}, %{neighbours: neighbours} = state) do
     {:noreply, %{state | neighbours: neighbours + 1}}
   end
 
@@ -67,7 +67,7 @@ defmodule Cell do
     Phoenix.PubSub.broadcast(
       App.PubSub,
       cell_ticktock_topic(lv_pid, x, y),
-      :alive
+      {:alive, x, y}
     )
   end
 
