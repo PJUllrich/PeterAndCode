@@ -10,9 +10,7 @@ defmodule App.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: App.PubSub},
       # Start the Endpoint (http/https)
-      AppWeb.Endpoint,
-      {Registry, keys: :unique, name: CellRegistry},
-      LifeGiver
+      AppWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
