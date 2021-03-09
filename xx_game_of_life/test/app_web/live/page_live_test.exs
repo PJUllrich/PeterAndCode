@@ -1,4 +1,4 @@
-defmodule AppWeb.PageLiveTest do
+defmodule AppWeb.GameOfLiveTest do
   use AppWeb.ConnCase
 
   import Phoenix.LiveViewTest

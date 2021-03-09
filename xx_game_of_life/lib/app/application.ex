@@ -7,14 +7,12 @@ defmodule App.Application do
 
   def start(_type, _args) do
     children = [
-      # Start the Telemetry supervisor
-      AppWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: App.PubSub},
       # Start the Endpoint (http/https)
-      AppWeb.Endpoint
-      # Start a worker by calling: App.Worker.start_link(arg)
-      # {App.Worker, arg}
+      AppWeb.Endpoint,
+      {Registry, keys: :unique, name: CellRegistry},
+      LifeGiver
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

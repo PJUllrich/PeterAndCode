@@ -1,0 +1,13 @@
+<section>
+  <table class="table">
+    <tbody>
+      <%= for row <- 1..@grid_size do %>
+        <tr>
+          <%= for col <- 1..@grid_size do %>
+            <%= live_component @socket, CellComponent, id: cell_id(row, col) %>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
