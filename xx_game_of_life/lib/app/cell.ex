@@ -8,8 +8,8 @@ defmodule Cell do
     )
   end
 
-  def init(state) do
-    broadcast_spawned(state)
+  def init(%{alive: alive} = state) do
+    if alive, do: broadcast_spawned(state)
     subscribe_ticktock(state)
     state = Map.merge(state, %{neighbours: 0})
 
@@ -21,25 +21,36 @@ defmodule Cell do
     {:noreply, %{state | neighbours: 0}}
   end
 
-  def handle_info(:tock, %{neighbours: neighbours} = state) do
-    if neighbours == 2 || neighbours == 3 do
-      {:noreply, state}
-    else
-      broadcast_died(state)
-      {:stop, :normal, state}
+  def handle_info(:tock, %{neighbours: neighbours, alive: alive} = state) do
+    cond do
+      neighbours == 3 && not alive ->
+        broadcast_spawned(state)
+        {:noreply, %{state | alive: true}}
+
+      neighbours == 2 || neighbours == 3 ->
+        {:noreply, state}
+
+      true ->
+        broadcast_died(state)
+        {:noreply, %{state | alive: false}}
     end
   end
 
-  def handle_info(:broadcast_alive, %{lv_pid: lv_pid, x: x, y: y} = state) do
+  def handle_info(:broadcast_alive, %{lv_pid: lv_pid, x: x, y: y, grid_size: grid_size} = state) do
     for xn <- (x - 1)..(x + 1),
         yn <- (y - 1)..(y + 1) do
-      if yn != y, do: broadcast_alive(lv_pid, xn, yn)
+      if xn >= 1 &&
+           xn <= grid_size &&
+           yn >= 1 &&
+           yn <= grid_size &&
+           yn != y,
+         do: broadcast_alive(lv_pid, xn, yn)
     end
 
     {:noreply, state}
   end
 
-  def handle_info({:alive, _x, _y}, %{neighbours: neighbours} = state) do
+  def handle_info(:alive, %{neighbours: neighbours} = state) do
     {:noreply, %{state | neighbours: neighbours + 1}}
   end
 
@@ -67,7 +78,7 @@ defmodule Cell do
     Phoenix.PubSub.broadcast(
       App.PubSub,
       cell_ticktock_topic(lv_pid, x, y),
-      {:alive, x, y}
+      :alive
     )
   end
 

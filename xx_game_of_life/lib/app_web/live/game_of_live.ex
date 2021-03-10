@@ -10,7 +10,6 @@ defmodule AppWeb.GameOfLive do
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(App.PubSub, Cell.lifecycle_topic(self()))
-      GenServer.start_link(LiveGiver, %{grid_size: @grid_size, lv_pid: self()})
       create_random_grid()
     end
 
@@ -26,11 +25,6 @@ defmodule AppWeb.GameOfLive do
   @impl true
   def handle_info({:cell_spawned, %{x: x, y: y}}, socket) do
     send_update(CellComponent, id: cell_id(x, y), alive: true)
-    {:noreply, socket}
-  end
-
-  def handle_info({:spawn_cell, %{x: x, y: y}}, socket) do
-    Cell.start_link(%{lv_pid: self(), x: x, y: y})
     {:noreply, socket}
   end
 
@@ -57,10 +51,9 @@ defmodule AppWeb.GameOfLive do
   defp create_random_grid do
     lv_pid = self()
 
-    for _ <- 1..Enum.random((@grid_size * 4)..(@grid_size * 6)) do
-      x = Enum.random(1..@grid_size)
-      y = Enum.random(1..@grid_size)
-      Cell.start_link(%{lv_pid: lv_pid, x: x, y: y})
+    for x <- 1..@grid_size, y <- 1..@grid_size do
+      alive = Enum.random(1..@grid_size) < @grid_size / 5
+      Cell.start_link(%{lv_pid: lv_pid, x: x, y: y, alive: alive, grid_size: @grid_size})
     end
   end
 end
