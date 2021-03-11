@@ -1,14 +1,16 @@
 <section>
   <table class="table">
     <tbody>
-      <%= for row <- 1..@grid_size do %>
+      <%= for y <- 1..@grid_size do %>
         <tr>
-          <%= for col <- 1..@grid_size do %>
-            <%= live_component @socket, CellComponent, id: cell_id(row, col) %>
+          <%= for x <- 1..@grid_size do %>
+            <%= live_component @socket, CellComponent, id: cell_id(x, y) %>
           <% end %>
         </tr>
       <% end %>
     </tbody>
     <button phx-click="start">Start</button>
+    <button phx-click="tick">Tick</button>
+    <button phx-click="tock">Tock</button>
   </table>
 </section>

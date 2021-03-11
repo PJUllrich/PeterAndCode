@@ -3,7 +3,7 @@ defmodule AppWeb.GameOfLive do
 
   alias AppWeb.GameOfLive.CellComponent
 
-  @grid_size 30
+  @grid_size 20
   @speed 1000
 
   @impl true
@@ -23,6 +23,18 @@ defmodule AppWeb.GameOfLive do
   end
 
   @impl true
+  def handle_event("tick", _params, socket) do
+    broadcast_ticktock(:tick)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("tock", _params, socket) do
+    broadcast_ticktock(:tock)
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info({:cell_spawned, %{x: x, y: y}}, socket) do
     send_update(CellComponent, id: cell_id(x, y), alive: true)
     {:noreply, socket}
@@ -35,18 +47,22 @@ defmodule AppWeb.GameOfLive do
   end
 
   def handle_info(:tick, socket) do
-    Phoenix.PubSub.broadcast!(App.PubSub, Cell.gen_ticktock_topic(self()), :tick)
+    broadcast_ticktock(:tick)
     Process.send_after(self(), :tock, @speed)
     {:noreply, socket}
   end
 
   def handle_info(:tock, socket) do
-    Phoenix.PubSub.broadcast!(App.PubSub, Cell.gen_ticktock_topic(self()), :tock)
+    broadcast_ticktock(:tock)
     Process.send_after(self(), :tick, @speed)
     {:noreply, socket}
   end
 
-  def cell_id(x, y), do: "cell-#{x}-#{y}"
+  def cell_id(x, y), do: "cell:#{x}:#{y}"
+
+  defp broadcast_ticktock(step) do
+    Phoenix.PubSub.broadcast!(App.PubSub, Cell.gen_ticktock_topic(self()), step)
+  end
 
   defp create_random_grid do
     lv_pid = self()
