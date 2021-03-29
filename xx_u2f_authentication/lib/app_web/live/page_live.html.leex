@@ -1,0 +1,30 @@
+<section class="phx-hero">
+  <%= f = form_for :registration, "#", [id: "registration-form", phx_submit: "start_registration", phx_hook: "Registration"] %>
+    <%= text_input f, :username, placeholder: "Choose a unique username..." %>
+    <%= submit "Start Registration", phx_disable_with: "Please touch your Yubikey" %>
+  </form>
+  <%= if assigns[:u2f_key] do %>
+    <table>
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <%= for {k, v} <- Map.take(@u2f_key, [:public_key, :key_handle, :version, :app_id, :username]) do %>
+          <tr>
+            <td><%= k %></td>
+            <td><%= v %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</section>
+<section class="phx-hero">
+  <%= f = form_for :login, "#", [id: "login-form", phx_submit: "start_login", phx_hook: "Login"] %>
+    <%= text_input f, :username, placeholder: "Enter your username..." %>
+    <%= submit "Start Login", phx_disable_with: "Please touch your Yubikey" %>
+  </form>
+</section>
