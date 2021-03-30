@@ -15,19 +15,19 @@ defmodule AppWeb.PageLive do
   def handle_event("start_registration", %{"registration" => %{"username" => username}}, socket) do
     {:ok, %{registerRequests: register_requests}} = U2FEx.start_registration(username)
 
-    {:noreply,
-     push_event(socket, "register", %{
-       appId: "https://localhost:4001",
-       registerRequests: register_requests,
-       username: username
-     })}
+    socket =
+      socket
+      |> assign(:username, username)
+      |> push_event("register", %{registerRequests: register_requests})
+
+    {:noreply, socket}
   end
 
   @impl true
   def handle_event(
         "finish_registration",
-        %{"response" => device_response, "username" => username},
-        socket
+        %{"response" => device_response},
+        %{assigns: %{username: username}} = socket
       ) do
     {:ok, %KeyMetadata{} = key_metadata} = U2FEx.finish_registration(username, device_response)
     {:ok, %U2FKey{} = key} = PKIStorage.create_u2f_key(username, key_metadata)
@@ -40,20 +40,21 @@ defmodule AppWeb.PageLive do
     {:ok, %{challenge: challenge, registeredKeys: registered_keys}} =
       U2FEx.start_authentication(username)
 
-    {:noreply,
-     push_event(socket, "login", %{
-       appId: "https://localhost:4001",
-       challenge: challenge,
-       registeredKeys: registered_keys,
-       username: username
-     })}
+    sign_requests = Enum.map(registered_keys, &Map.merge(&1, %{challenge: challenge}))
+
+    socket =
+      socket
+      |> assign(:username, username)
+      |> push_event("login", %{signRequests: sign_requests})
+
+    {:noreply, socket}
   end
 
   @impl true
   def handle_event(
         "finish_login",
-        %{"username" => username, "response" => device_response},
-        socket
+        %{"response" => device_response},
+        %{assigns: %{username: username}} = socket
       ) do
     U2FEx.finish_authentication(username, device_response |> Jason.encode!())
     |> case do
