@@ -27,7 +27,7 @@ config :logger, :console,
 config :phoenix, :json_library, Jason
 
 config :u2f_ex,
-  pki_storage: PKIStorage,
+  pki_storage: App.PKIStorage,
   app_id: "https://localhost:4001"
 
 # Import environment specific config. This must remain at the bottom

@@ -1,6 +1,8 @@
 defmodule AppWeb.PageLive do
   use AppWeb, :live_view
 
+  require Logger
+
   alias App.{PKIStorage, U2FKey}
   alias U2FEx.KeyMetadata
 
@@ -11,21 +13,11 @@ defmodule AppWeb.PageLive do
 
   @impl true
   def handle_event("start_registration", %{"registration" => %{"username" => username}}, socket) do
-    {:ok, %{registerRequests: [%{appId: app_id, challenge: challenge}]}} =
-      U2FEx.start_registration(username)
-
-    register_requests = [
-      %{
-        appId: app_id,
-        version: "U2F_V2",
-        challenge: challenge,
-        padding: false
-      }
-    ]
+    {:ok, %{registerRequests: register_requests}} = U2FEx.start_registration(username)
 
     {:noreply,
      push_event(socket, "register", %{
-       appId: app_id,
+       appId: "https://localhost:4001",
        registerRequests: register_requests,
        username: username
      })}
@@ -48,9 +40,6 @@ defmodule AppWeb.PageLive do
     {:ok, %{challenge: challenge, registeredKeys: registered_keys}} =
       U2FEx.start_authentication(username)
 
-    registered_keys =
-      Enum.map(registered_keys, fn %{appId: app_id} = key -> %{key | appId: "#{app_id}:4001"} end)
-
     {:noreply,
      push_event(socket, "login", %{
        appId: "https://localhost:4001",
@@ -63,11 +52,17 @@ defmodule AppWeb.PageLive do
   @impl true
   def handle_event(
         "finish_login",
-        %{"username" => username, "response" => device_response} = params,
+        %{"username" => username, "response" => device_response},
         socket
       ) do
-    IO.inspect(params)
     U2FEx.finish_authentication(username, device_response |> Jason.encode!())
-    {:noreply, socket}
+    |> case do
+      :ok ->
+        {:noreply, assign(socket, :current_username, username)}
+
+      error ->
+        Logger.error(inspect(error))
+        {:noreply, put_flash(socket, :error, "Login failed.")}
+    end
   end
 end

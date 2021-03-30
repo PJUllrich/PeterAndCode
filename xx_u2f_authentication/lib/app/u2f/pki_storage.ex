@@ -34,19 +34,8 @@ defmodule App.PKIStorage do
     end
   end
 
-  def create_u2f_key(
-        username,
-        %U2FEx.KeyMetadata{public_key: public_key, key_handle: key_handle} = key_metadata
-      ) do
-    attrs =
-      Map.merge(
-        Map.from_struct(key_metadata),
-        %{
-          username: username,
-          public_key: Base.encode64(public_key),
-          key_handle: Base.encode64(key_handle)
-        }
-      )
+  def create_u2f_key(username, %U2FEx.KeyMetadata{} = key_metadata) do
+    attrs = Map.merge(Map.from_struct(key_metadata), %{username: username})
 
     %U2FKey{}
     |> U2FKey.changeset(attrs)

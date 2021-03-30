@@ -1,7 +1,7 @@
 <section class="phx-hero">
   <%= f = form_for :registration, "#", [id: "registration-form", phx_submit: "start_registration", phx_hook: "Registration"] %>
-    <%= text_input f, :username, placeholder: "Choose a unique username..." %>
-    <%= submit "Start Registration", phx_disable_with: "Please touch your Yubikey" %>
+    <%= text_input f, :username, placeholder: "Choose a username..." %>
+    <%= submit "Register" %>
   </form>
   <%= if assigns[:u2f_key] do %>
     <table>
@@ -25,6 +25,9 @@
 <section class="phx-hero">
   <%= f = form_for :login, "#", [id: "login-form", phx_submit: "start_login", phx_hook: "Login"] %>
     <%= text_input f, :username, placeholder: "Enter your username..." %>
-    <%= submit "Start Login", phx_disable_with: "Please touch your Yubikey" %>
+    <%= submit "Login" %>
   </form>
+  <%= if assigns[:current_username] do %>
+    <h3>You are logged in as: <%= @current_username %></h3>
+  <% end %>
 </section>
