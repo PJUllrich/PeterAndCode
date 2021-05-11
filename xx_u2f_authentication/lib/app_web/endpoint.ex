@@ -10,10 +10,6 @@ defmodule AppWeb.Endpoint do
     signing_salt: "XyJsT6J+"
   ]
 
-  socket "/socket", AppWeb.UserSocket,
-    websocket: true,
-    longpoll: false
-
   socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
 
   # Serve at "/" the static files from "priv/static" directory.
