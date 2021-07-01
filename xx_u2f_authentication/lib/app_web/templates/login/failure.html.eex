@@ -1,0 +1,5 @@
+<section>
+  <h1>Error!</h1>
+  <h3>Could not log you in:</h3>
+  <h2><%= @error %></h2>
+</section>

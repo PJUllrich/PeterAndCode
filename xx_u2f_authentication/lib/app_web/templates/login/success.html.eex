@@ -1,0 +1,4 @@
+<section>
+  <h1>Success!</h1>
+  <h3>You're logged in as: <%= @username %></h3>
+</section>

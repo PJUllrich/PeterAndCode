@@ -18,6 +18,7 @@ defmodule AppWeb.Router do
     pipe_through :browser
 
     live "/", PageLive, :index
+    get "/login-callback", LoginController, :login
   end
 
   # Other scopes may use custom stacks.
