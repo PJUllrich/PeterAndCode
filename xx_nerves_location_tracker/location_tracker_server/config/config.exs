@@ -8,7 +8,8 @@
 use Mix.Config
 
 config :location_tracker_server,
-  ecto_repos: [LocationTrackerServer.Repo]
+  ecto_repos: [LocationTrackerServer.Repo],
+  channel_token: System.get_env("CHANNEL_TOKEN")
 
 # Configures the endpoint
 config :location_tracker_server, LocationTrackerServerWeb.Endpoint,

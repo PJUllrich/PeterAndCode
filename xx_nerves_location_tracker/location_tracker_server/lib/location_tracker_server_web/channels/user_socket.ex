@@ -1,8 +1,8 @@
-defmodule LocationTrackerServerWeb.UserSocket do
+defmodule LocationTrackerServerWeb.LocationTrackerSocket do
   use Phoenix.Socket
 
   ## Channels
-  # channel "room:*", LocationTrackerServerWeb.RoomChannel
+  channel("locations:*", LocationTrackerServerWeb.LocationsChannel)
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After
@@ -16,9 +16,17 @@ defmodule LocationTrackerServerWeb.UserSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   @impl true
-  def connect(_params, socket, _connect_info) do
-    {:ok, socket}
+  def connect(%{"token" => token}, socket, _connect_info) do
+    case token == Application.get_env(:location_tracker_server, :channel_token) do
+      true ->
+        {:ok, socket}
+
+      false ->
+        :error
+    end
   end
+
+  def connect(_params, _socket, _connect_info), do: :error
 
   # Socket id's are topics that allow you to identify all sockets for a given user:
   #
