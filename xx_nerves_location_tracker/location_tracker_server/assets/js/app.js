@@ -13,25 +13,23 @@ import "../css/app.scss";
 //     import socket from "./socket"
 //
 import "phoenix_html";
-import { Socket } from "phoenix";
+import {Socket} from "phoenix";
 import topbar from "topbar";
-import { LiveSocket } from "phoenix_live_view";
+import {LiveSocket} from "phoenix_live_view";
 
 import LeafletMap from "./map";
 
 let Hooks = {};
 Hooks.LeafletMap = LeafletMap;
 
-let csrfToken = document
-  .querySelector("meta[name='csrf-token']")
-  .getAttribute("content");
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,
-  params: { _csrf_token: csrfToken },
+  params: {_csrf_token: csrfToken},
 });
 
 // Show progress bar on live navigation and form submits
-topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
+topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"});
 window.addEventListener("phx:page-loading-start", (info) => topbar.show());
 window.addEventListener("phx:page-loading-stop", (info) => topbar.hide());
 
@@ -43,3 +41,4 @@ liveSocket.connect();
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket;
+window.Socket = Socket;

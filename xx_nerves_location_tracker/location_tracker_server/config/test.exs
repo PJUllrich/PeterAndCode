@@ -18,7 +18,5 @@ config :location_tracker_server, LocationTrackerServerWeb.Endpoint,
   http: [port: 4002],
   server: false
 
-config :location_tracker_server, channel_token: "channel_token"
-
 # Print only warnings and errors during test
 config :logger, level: :warn

@@ -52,3 +52,16 @@ L.circle([point.longitude, point.latitude], {
 2. Log the PID, parse it from string to pid, and send messages to it.
 3. Subscribe the LiveView to the PubSub with: `Phoenix.PubSub.subscribe(LocationTrackerServer.PubSub, "location_points")`
 4. Send a message to it via the PubSub
+5. Send a message to it via JavaScript
+```js
+let socket = new Socket("/socket", {params: {token: "channel_token"}})
+socket.connect()
+
+let channel = socket.channel("locations:sending")
+channel.join()
+    .receive("ok", ({messages}) => console.log("catching up", messages) )
+    .receive("error", ({reason}) => console.log("failed join", reason) )
+    .receive("timeout", () => console.log("Networking issue. Still waiting..."))
+
+channel.push("add_point", {longitude: 50.96, latitude: 6.97})
+```
