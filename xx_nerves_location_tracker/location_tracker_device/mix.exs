@@ -43,6 +43,7 @@ defmodule LocationTrackerDevice.MixProject do
       {:shoehorn, "~> 0.7.0"},
       {:ring_logger, "~> 0.8.1"},
       {:toolshed, "~> 0.2.13"},
+      {:vintage_net_wifi, "~> 0.10.3", targets: @all_targets},
 
       # Dependencies for all targets except :host
       {:nerves_runtime, "~> 0.11.3", targets: @all_targets},
@@ -57,7 +58,10 @@ defmodule LocationTrackerDevice.MixProject do
       {:nerves_system_rpi4, "~> 1.13", runtime: false, targets: :rpi4},
       {:nerves_system_bbb, "~> 2.8", runtime: false, targets: :bbb},
       {:nerves_system_osd32mp1, "~> 0.4", runtime: false, targets: :osd32mp1},
-      {:nerves_system_x86_64, "~> 1.13", runtime: false, targets: :x86_64}
+      {:nerves_system_x86_64, "~> 1.13", runtime: false, targets: :x86_64},
+
+      # Development dependencies
+      {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false}
     ]
   end
 

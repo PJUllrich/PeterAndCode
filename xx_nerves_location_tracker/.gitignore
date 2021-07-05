@@ -19,6 +19,7 @@ erl_crash.dump
 # Also ignore archive artifacts (built via "mix archive.build").
 *.ez
 
+upload.sh
 # Ignore package tarball (built via "mix hex.build").
 location_tracker_server-*.tar
 

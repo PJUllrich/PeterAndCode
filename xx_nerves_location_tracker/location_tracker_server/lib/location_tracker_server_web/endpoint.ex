@@ -11,7 +11,7 @@ defmodule LocationTrackerServerWeb.Endpoint do
   ]
 
   socket("/socket", LocationTrackerServerWeb.LocationTrackerSocket,
-    websocket: true,
+    websocket: [timeout: 45_000],
     longpoll: false
   )
 
