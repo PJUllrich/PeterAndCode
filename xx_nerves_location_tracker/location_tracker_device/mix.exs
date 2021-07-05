@@ -35,6 +35,9 @@ defmodule LocationTrackerDevice.MixProject do
       {:websocket_client, "~> 1.2"},
       {:jason, "~> 1.1"},
 
+      # Dependency for reading GPS location data
+      {:nerves_uart, "~> 1.2"},
+
       # Dependencies for all targets
       {:nerves, "~> 1.7.0", runtime: false},
       {:shoehorn, "~> 0.7.0"},
