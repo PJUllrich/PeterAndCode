@@ -10,6 +10,10 @@ Application.start(:nerves_bootstrap)
 
 config :location_tracker_device, target: Mix.target()
 
+config :location_tracker_device,
+  server_url: System.get_env("SERVER_URL", "localhost:4000/socket"),
+  channel_token: System.get_env("CHANNEL_TOKEN", "channel_token")
+
 # Customize non-Elixir parts of the firmware. See
 # https://hexdocs.pm/nerves/advanced-configuration.html for details.
 

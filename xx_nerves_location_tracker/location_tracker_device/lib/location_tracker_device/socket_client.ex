@@ -5,7 +5,7 @@ defmodule LocationTrackerDevice.SocketClient do
   @behaviour GenSocketClient
 
   def start_link() do
-    url = Application.get_env(:location_tracker_device, :server_url, "localhost:4000/socket")
+    url = Application.get_env(:location_tracker_device, :server_url)
 
     GenSocketClient.start_link(
       __MODULE__,
@@ -15,7 +15,46 @@ defmodule LocationTrackerDevice.SocketClient do
   end
 
   def init(url) do
-    {:connect, url, [token: "channel_token"], %{first_join: true, ping_ref: 1}}
+    token = Application.get_env(:location_tracker_device, :channel_token)
+    {:connect, url, [token: token], %{}}
+  end
+
+  def handle_info({:join, topic}, transport, state) do
+    Logger.info("joining the topic #{topic}")
+
+    case GenSocketClient.join(transport, topic) do
+      {:error, reason} ->
+        Logger.error("error joining the topic #{topic}: #{inspect(reason)}")
+        Process.send_after(self(), {:join, topic}, :timer.seconds(1))
+
+      {:ok, _ref} ->
+        :ok
+    end
+
+    {:ok, state}
+  end
+
+  def handle_info({:send, topic, event, payload}, transport, state) do
+    GenSocketClient.push(transport, topic, event, payload)
+    |> case do
+      {:ok, _ref} ->
+        Logger.info("Event published successfully on #{topic} with #{inspect(payload)}")
+
+      {:error, error} ->
+        Logger.error("Event publishing failed with error #{error}")
+    end
+
+    {:ok, state}
+  end
+
+  def handle_info(:connect, _transport, state) do
+    Logger.info("connecting")
+    {:connect, state}
+  end
+
+  def handle_info(message, _transport, state) do
+    Logger.warn("Unhandled message #{inspect(message)}")
+    {:ok, state}
   end
 
   def handle_connected(_transport, state) do
@@ -59,44 +98,6 @@ defmodule LocationTrackerDevice.SocketClient do
   def handle_call(message, _from, _transport, state) do
     Logger.warn("Did not expect to receive call with message: #{inspect(message)}")
     {:reply, {:error, :unexpected_message}, state}
-  end
-
-  def handle_info(:connect, _transport, state) do
-    Logger.info("connecting")
-    {:connect, state}
-  end
-
-  def handle_info({:join, topic}, transport, state) do
-    Logger.info("joining the topic #{topic}")
-
-    case GenSocketClient.join(transport, topic) do
-      {:error, reason} ->
-        Logger.error("error joining the topic #{topic}: #{inspect(reason)}")
-        Process.send_after(self(), {:join, topic}, :timer.seconds(1))
-
-      {:ok, _ref} ->
-        :ok
-    end
-
-    {:ok, state}
-  end
-
-  def handle_info({:send, topic, event, payload}, transport, state) do
-    GenSocketClient.push(transport, topic, event, payload)
-    |> case do
-      {:ok, _ref} ->
-        Logger.info("Event published successfully on #{topic} with #{inspect(payload)}")
-
-      {:error, error} ->
-        Logger.error("Event publishing failed with error #{error}")
-    end
-
-    {:ok, state}
-  end
-
-  def handle_info(message, _transport, state) do
-    Logger.warn("Unhandled message #{inspect(message)}")
-    {:ok, state}
   end
 
   def terminate(reason, _state) do
