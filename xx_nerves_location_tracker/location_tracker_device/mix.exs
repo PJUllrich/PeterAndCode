@@ -61,7 +61,8 @@ defmodule LocationTrackerDevice.MixProject do
       {:nerves_system_x86_64, "~> 1.13", runtime: false, targets: :x86_64},
 
       # Development dependencies
-      {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false}
+      {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.22.0", only: :dev, runtime: false}
     ]
   end
 

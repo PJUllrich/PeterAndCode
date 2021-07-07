@@ -1,4 +1,6 @@
 defmodule LocationTrackerDevice.LocationTracker do
+  @moduledoc false
+
   use GenServer
 
   require Logger

@@ -10,7 +10,7 @@ defmodule LocationTrackerDevice.SocketClient do
     GenSocketClient.start_link(
       __MODULE__,
       Phoenix.Channels.GenSocketClient.Transport.WebSocketClient,
-      "ws://#{url}/websocket"
+      "#{url}/socket/websocket"
     )
   end
 
