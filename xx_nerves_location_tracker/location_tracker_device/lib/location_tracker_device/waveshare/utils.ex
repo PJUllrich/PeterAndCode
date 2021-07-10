@@ -1,4 +1,8 @@
 defmodule WaveshareHat.Utils do
+  @moduledoc """
+  Utility functions for the other WaveshareHat modules.
+  """
+
   @doc """
   Inquires the state of the SIM module.
   """

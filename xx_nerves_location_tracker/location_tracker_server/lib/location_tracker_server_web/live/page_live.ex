@@ -10,7 +10,6 @@ defmodule LocationTrackerServerWeb.PageLive do
     end
 
     points = Locations.list_location_points()
-
     {:ok, push_points(points, socket)}
   end
 
@@ -24,7 +23,7 @@ defmodule LocationTrackerServerWeb.PageLive do
   end
 
   defp push_points(points, socket) when is_list(points) do
-    points = Enum.map(points, &Map.take(&1, [:longitude, :latitude]))
+    points = Enum.map(points, &Map.take(&1, [:latitude, :longitude]))
     push_event(socket, "add_points", %{points: points})
   end
 end

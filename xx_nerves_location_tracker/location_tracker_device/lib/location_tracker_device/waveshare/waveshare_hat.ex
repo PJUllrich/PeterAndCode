@@ -23,7 +23,7 @@ defmodule WaveshareHat do
 
       iex> {:ok, pid} = Nerves.UART.start_link
       {:ok, #PID<0.132.0>}
-      iex> Nerves.UART.open(pid, "/dev/ttyAMA0")
+      iex> Nerves.UART.open(pid, "/dev/ttyAMA0", speed: 115200)
       :ok
       iex> Nerves.UART.configure(pid, framing: {Nerves.UART.Framing.Line, separator: "\\r\\n"})
       :ok

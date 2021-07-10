@@ -73,21 +73,6 @@ defmodule WaveshareHat.SMS do
   end
 
   @doc """
-  Send a SMS message from a given number to a given number with
-  a given text body.
-  """
-  def send_sms(pid, from_number, message, to_number)
-      when is_binary(from_number) and is_binary(message) and is_binary(to_number) do
-    with :ok <- set_local_number(pid, from_number),
-         :ok <- set_sms_mode(pid, 1),
-         :ok <- set_sms_body(pid, message),
-         :ok <- end_mark(pid),
-         :ok <- send_sms(pid, to_number) do
-      :ok
-    end
-  end
-
-  @doc """
   Reads a SMS message at a given position of the inbox.
   """
   def read_sms(pid, position), do: write(pid, "AT+CMGR=#{position}")

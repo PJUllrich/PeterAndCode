@@ -12,7 +12,7 @@ defmodule LocationTrackerServer.Locations.Point do
   @doc false
   def changeset(point, attrs) do
     point
-    |> cast(attrs, [:longitude, :latitude])
-    |> validate_required([:longitude, :latitude])
+    |> cast(attrs, [:latitude, :longitude])
+    |> validate_required([:latitude, :longitude])
   end
 end
