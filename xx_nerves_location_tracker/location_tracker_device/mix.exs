@@ -36,14 +36,15 @@ defmodule LocationTrackerDevice.MixProject do
       {:jason, "~> 1.1"},
 
       # Dependency for reading GPS location data
-      {:nerves_uart, "~> 1.2"},
+      {:waveshare_hat, "~> 0.1.0", github: "PJUllrich/nerves_waveshare_868_gsm_gprs_gnss_hat"},
 
       # Dependencies for all targets
       {:nerves, "~> 1.7.0", runtime: false},
       {:shoehorn, "~> 0.7.0"},
       {:ring_logger, "~> 0.8.1"},
       {:toolshed, "~> 0.2.13"},
-      {:vintage_net_wifi, "~> 0.10.3", targets: @all_targets},
+      {:vintage_net_wifi, "~> 0.10.4", targets: @all_targets},
+      {:vintage_net_mobile, "~> 0.10.1", targets: @all_targets},
 
       # Dependencies for all targets except :host
       {:nerves_runtime, "~> 0.11.3", targets: @all_targets},
