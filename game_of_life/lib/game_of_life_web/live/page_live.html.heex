@@ -1,0 +1,11 @@
+<section class="table-container">
+  <table>
+    <%= for row <- 1..@grid_size do %>
+    <tr>
+      <%=  for col <- 1..@grid_size do %>
+        <%= live_component GameOfLifeWeb.PageLive.CellComponent, id: "cell-#{row}-#{col}", row: row, col: col %>
+      <% end %>
+    </tr>
+    <% end %>
+  </table>
+</section>

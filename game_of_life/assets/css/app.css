@@ -1,0 +1,21 @@
+/* This file is for your main application css. */
+
+.table-container {
+  display: flex;
+  justify-content: center;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+.cell {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid;
+}
+
+.alive {
+  background-color: #000;
+}
+
