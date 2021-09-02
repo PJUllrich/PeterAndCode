@@ -61,7 +61,7 @@ defmodule GameOfLifeWeb.PageLive do
   defp notify_cells_and_schedule_next_step(
          current_step,
          next_step,
-         %{assigns: %{cells: cells}} = socket
+         %{assigns: %{cells: cells}}
        ) do
     Enum.each(cells, &send(&1, current_step))
     Process.send_after(self(), next_step, @update_frequency_in_ms)

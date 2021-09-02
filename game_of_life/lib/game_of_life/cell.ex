@@ -19,37 +19,14 @@ defmodule GameOfLife.Cell do
     {:noreply, state}
   end
 
-  def handle_info(:tock, %{alive?: alive?, alive_neighbours: alive_neighbours} = state) do
-    new_alive? =
-      cond do
-        alive? && alive_neighbours in [2, 3] ->
-          true
-
-        not alive? && alive_neighbours == 3 ->
-          true
-
-        true ->
-          false
-      end
-
-    state = %{state | alive?: new_alive?, alive_neighbours: 0}
-    if new_alive? != alive?, do: set_alive(state)
-
+  def handle_info(:tock, state) do
+    state = determine_new_life_state(state)
     {:noreply, state}
   end
 
-  # TODO: What if :hello_neighbour arrives before :tick?
   def handle_info(:hello_neighbour, state) do
     state = Map.update!(state, :alive_neighbours, &(&1 + 1))
     {:noreply, state}
-  end
-
-  defp set_alive(%{lv_pid: lv_pid, row: row, col: col, alive?: alive?}) do
-    send(lv_pid, {:set_alive, row, col, alive?})
-  end
-
-  defp gen_name(%{lv_pid: lv_pid, row: row, col: col}) do
-    :"#{inspect(lv_pid)}-#{row}-#{col}"
   end
 
   defp notify_neighbours(%{
@@ -69,5 +46,32 @@ defmodule GameOfLife.Cell do
         send(name, :hello_neighbour)
       end
     end
+  end
+
+  defp determine_new_life_state(%{alive?: alive?, alive_neighbours: alive_neighbours} = state) do
+    new_alive? =
+      cond do
+        alive? && alive_neighbours in [2, 3] ->
+          true
+
+        not alive? && alive_neighbours == 3 ->
+          true
+
+        true ->
+          false
+      end
+
+    state = %{state | alive?: new_alive?, alive_neighbours: 0}
+    if new_alive? != alive?, do: set_alive(state)
+
+    state
+  end
+
+  defp set_alive(%{lv_pid: lv_pid, row: row, col: col, alive?: alive?}) do
+    send(lv_pid, {:set_alive, row, col, alive?})
+  end
+
+  defp gen_name(%{lv_pid: lv_pid, row: row, col: col}) do
+    :"#{inspect(lv_pid)}-#{row}-#{col}"
   end
 end
