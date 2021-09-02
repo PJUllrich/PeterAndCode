@@ -1,5 +1,5 @@
 defmodule GameOfLifeWeb.PageLiveTest do
-  use GameOfLifeWeb.ConnCase
+  use GameOfLifeWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
 
@@ -21,5 +21,10 @@ defmodule GameOfLifeWeb.PageLiveTest do
     send(view.pid, {:set_alive, 1, 1, false})
     :timer.sleep(1)
     refute has_element?(view, "td[data-phx-component=1][class='cell alive']")
+  end
+
+  @tag :wip
+  test "sends a tick message to all cells when 'start' is pressed", %{conn: _conn} do
+    assert true
   end
 end

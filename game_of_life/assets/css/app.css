@@ -1,8 +1,10 @@
 /* This file is for your main application css. */
 
-.table-container {
+.centered-container {
   display: flex;
   justify-content: center;
+
+  margin-top: 1rem;
 }
 
 table {

@@ -1,4 +1,4 @@
-<section class="table-container">
+<section class="centered-container">
   <table>
     <%= for row <- 1..@grid_size do %>
     <tr>
@@ -8,4 +8,7 @@
     </tr>
     <% end %>
   </table>
+</section>
+<section class="centered-container">
+  <button phx-click="start">Start</button>
 </section>
