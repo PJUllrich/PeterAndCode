@@ -11,4 +11,7 @@
 </section>
 <section class="centered-container">
   <button phx-click="start">Start</button>
+  <%= if @started do %>
+  <button phx-click="stop">Stop</button>
+  <% end %>
 </section>

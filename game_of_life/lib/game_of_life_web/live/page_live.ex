@@ -11,13 +11,21 @@ defmodule GameOfLifeWeb.PageLive do
   def mount(_params, _session, socket) do
     cells = connected?(socket) && spawn_cells()
 
-    {:ok, assign(socket, grid_size: @grid_size, cells: cells)}
+    {:ok, assign(socket, grid_size: @grid_size, cells: cells, started: false)}
   end
 
   @impl true
-  def handle_event("start", _, socket) do
-    send(self(), :tick)
-    {:noreply, socket}
+  def handle_event("start", _, %{assigns: %{started: started}} = socket) do
+    unless started do
+      send(self(), :tick)
+    end
+
+    {:noreply, assign(socket, started: true)}
+  end
+
+  @impl true
+  def handle_event("stop", _, socket) do
+    {:noreply, assign(socket, started: false)}
   end
 
   @impl true
@@ -27,16 +35,14 @@ defmodule GameOfLifeWeb.PageLive do
   end
 
   @impl true
-  def handle_info(:tick, %{assigns: %{cells: cells}} = socket) do
-    Enum.each(cells, &send(&1, :tick))
-    Process.send_after(self(), :tock, @update_frequency_in_ms)
+  def handle_info(:tick, %{assigns: %{started: started}} = socket) do
+    if started, do: notify_cells_and_schedule_next_step(:tick, :tock, socket)
     {:noreply, socket}
   end
 
   @impl true
-  def handle_info(:tock, %{assigns: %{cells: cells}} = socket) do
-    Enum.each(cells, &send(&1, :tock))
-    Process.send_after(self(), :tick, @update_frequency_in_ms)
+  def handle_info(:tock, socket) do
+    notify_cells_and_schedule_next_step(:tock, :tick, socket)
     {:noreply, socket}
   end
 
@@ -50,5 +56,14 @@ defmodule GameOfLifeWeb.PageLive do
       end
     end
     |> List.flatten()
+  end
+
+  defp notify_cells_and_schedule_next_step(
+         current_step,
+         next_step,
+         %{assigns: %{cells: cells}} = socket
+       ) do
+    Enum.each(cells, &send(&1, current_step))
+    Process.send_after(self(), next_step, @update_frequency_in_ms)
   end
 end
