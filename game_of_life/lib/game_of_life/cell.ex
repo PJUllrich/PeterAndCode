@@ -4,24 +4,44 @@ defmodule GameOfLife.Cell do
   def start_link(init_args) do
     alive? = Map.get(init_args, :alive?, Enum.random([true, false]))
     name = Map.get(init_args, :name, gen_name(init_args))
-    args = Map.merge(init_args, %{alive?: alive?})
+    state = Map.merge(%{alive?: alive?, alive_neighbours: 0}, init_args)
 
-    GenServer.start_link(__MODULE__, args, name: name)
+    GenServer.start_link(__MODULE__, state, name: name)
   end
 
-  def init(%{alive?: alive?} = args) do
-    if alive?, do: set_alive(args)
-    {:ok, args}
+  def init(%{alive?: alive?} = state) do
+    if alive?, do: set_alive(state)
+    {:ok, state}
   end
 
-  def handle_info(:tick, %{alive?: alive?} = args) do
-    if alive?, do: notify_neighbours(args)
-    {:noreply, %{args | alive_neighbours: 0}}
+  def handle_info(:tick, %{alive?: alive?} = state) do
+    if alive?, do: notify_neighbours(state)
+    {:noreply, state}
   end
 
-  def handle_info(:hello_neighbour, args) do
-    args = Map.update!(args, :alive_neighbours, &(&1 + 1))
-    {:noreply, args}
+  def handle_info(:tock, %{alive?: alive?, alive_neighbours: alive_neighbours} = state) do
+    new_alive? =
+      cond do
+        alive? && alive_neighbours in [2, 3] ->
+          true
+
+        not alive? && alive_neighbours == 3 ->
+          true
+
+        true ->
+          false
+      end
+
+    state = %{state | alive?: new_alive?, alive_neighbours: 0}
+    if new_alive? != alive?, do: set_alive(state)
+
+    {:noreply, state}
+  end
+
+  # TODO: What if :hello_neighbour arrives before :tick?
+  def handle_info(:hello_neighbour, state) do
+    state = Map.update!(state, :alive_neighbours, &(&1 + 1))
+    {:noreply, state}
   end
 
   defp set_alive(%{lv_pid: lv_pid, row: row, col: col, alive?: alive?}) do
@@ -38,7 +58,12 @@ defmodule GameOfLife.Cell do
          col: own_col,
          boundaries: [min_idx, max_idx]
        }) do
-    for row <- min_idx..max_idx, col <- min_idx..max_idx do
+    min_row = max(own_row - 1, min_idx)
+    max_row = min(own_row + 1, max_idx)
+    min_col = max(own_col - 1, min_idx)
+    max_col = min(own_col + 1, max_idx)
+
+    for row <- min_row..max_row, col <- min_col..max_col do
       unless row == own_row && col == own_col do
         name = gen_name(%{lv_pid: lv_pid, row: row, col: col})
         send(name, :hello_neighbour)

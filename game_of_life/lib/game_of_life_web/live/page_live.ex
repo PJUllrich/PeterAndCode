@@ -5,6 +5,7 @@ defmodule GameOfLifeWeb.PageLive do
   alias GameOfLifeWeb.PageLive.CellComponent
 
   @grid_size 20
+  @update_frequency_in_ms 500
 
   @impl true
   def mount(_params, _session, socket) do
@@ -28,6 +29,14 @@ defmodule GameOfLifeWeb.PageLive do
   @impl true
   def handle_info(:tick, %{assigns: %{cells: cells}} = socket) do
     Enum.each(cells, &send(&1, :tick))
+    Process.send_after(self(), :tock, @update_frequency_in_ms)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(:tock, %{assigns: %{cells: cells}} = socket) do
+    Enum.each(cells, &send(&1, :tock))
+    Process.send_after(self(), :tick, @update_frequency_in_ms)
     {:noreply, socket}
   end
 
