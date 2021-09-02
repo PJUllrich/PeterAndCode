@@ -7,7 +7,6 @@ defmodule LocationTrackerDevice.LocationTracker do
 
   alias LocationTrackerDevice.SocketClient
 
-  @channel_topic "locations:sending"
   @uart_port "/dev/ttyAMA0"
   @min_location_change_threshold_in_meters 3.0
 
@@ -29,14 +28,10 @@ defmodule LocationTrackerDevice.LocationTracker do
   def init(_args) do
     {:ok, ws_client} = SocketClient.start_link()
     {:ok, uart_client} = start_uart_link()
-    state = Map.merge(%{ws_client: ws_client, uart_client: uart_client}, @initial_state)
-    {:ok, state, {:continue, :join_topic}}
-  end
-
-  def handle_continue(:join_topic, %{ws_client: ws_client} = state) do
-    send(ws_client, {:join, @channel_topic})
     send(self(), :maybe_turn_on_gps)
-    {:noreply, state}
+
+    state = Map.merge(%{ws_client: ws_client, uart_client: uart_client}, @initial_state)
+    {:ok, state}
   end
 
   def handle_call(:get_uart_client, _from, %{uart_client: uart_client} = state) do
@@ -44,7 +39,7 @@ defmodule LocationTrackerDevice.LocationTracker do
   end
 
   def handle_info(:maybe_turn_on_gps, %{uart_client: uart_client, gps_enabled: false} = state) do
-    Logger.debug("GPS disabled. Trying to enabled it...")
+    Logger.debug("WaveshareHat disabled. Trying to enabled it...")
     WaveshareHat.GNSS.set_on_or_off(uart_client, 1)
     # Check again after 1 second whether GPS is turned on
     Process.send_after(self(), :maybe_turn_on_gps, 1_000)
@@ -55,6 +50,12 @@ defmodule LocationTrackerDevice.LocationTracker do
     {:noreply, state}
   end
 
+  def handle_info(:fetch_gps_info, %{uart_client: uart_client} = state) do
+    WaveshareHat.GNSS.get_gps_information(uart_client)
+    Process.send_after(self(), :fetch_gps_info, 1_000)
+    {:noreply, state}
+  end
+
   def handle_info({:add_point, latitude, longitude}, state) do
     Logger.info("Trying to add point: #{latitude}, #{longitude}")
     add_point(latitude, longitude, state)
@@ -62,11 +63,11 @@ defmodule LocationTrackerDevice.LocationTracker do
     {:noreply, state}
   end
 
-  def handle_info({:nerves_uart, _uart_port, "OK"}, %{uart_client: uart_client} = state) do
+  def handle_info({:circuits_uart, _uart_port, "OK"}, state) do
     state =
       cond do
         not state.gps_enabled ->
-          WaveshareHat.GNSS.set_send_gps_data_to_uart(uart_client, 1)
+          send(self(), :fetch_gps_info)
           %{state | gps_enabled: true}
 
         state.gps_enabled && not state.receiving_gps_data ->
@@ -79,21 +80,22 @@ defmodule LocationTrackerDevice.LocationTracker do
     {:noreply, state}
   end
 
-  def handle_info({:nerves_uart, _uart_port, "$GNGGA," <> gps_data}, state) do
+  # "+CGNSINF: 1,1,20210806110258.000,50.905353,6.979645,39.318,0.00,0.0,2,,0.7,1.3,1.1,,10,15,,,48,,"
+  def handle_info({:circuits_uart, _uart_port, "+CGNSINF: " <> gps_data}, state) do
     data = String.split(gps_data, ",")
 
     # Check if data contains coordinates.
     # If not, GPS is still trying to get a fix.
     state =
-      if Enum.at(data, 1) != "" do
-        latitude = data |> Enum.at(1) |> String.to_float() |> Kernel./(100)
-        longitude = data |> Enum.at(3) |> String.to_float() |> Kernel./(100)
+      if Enum.at(data, 3) != "" do
+        latitude = data |> Enum.at(3) |> String.to_float()
+        longitude = data |> Enum.at(4) |> String.to_float()
         distance = calc_distance(latitude, longitude, state)
 
         Logger.debug("Position: #{latitude}, #{longitude}. Distance change: #{distance} Meters")
 
         if distance == :infinity || distance > @min_location_change_threshold_in_meters do
-          Logger.debug("Location change significant. Addinp point: #{latitude}, #{longitude}")
+          Logger.debug("Location change significant. Adding point: #{latitude}, #{longitude}")
           add_point(latitude, longitude, state)
           %{state | latitude: latitude, longitude: longitude}
         else

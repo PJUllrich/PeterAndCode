@@ -4,6 +4,8 @@ defmodule LocationTrackerDevice.SocketClient do
   alias Phoenix.Channels.GenSocketClient
   @behaviour GenSocketClient
 
+  @channel_topic "locations:sending"
+
   def start_link() do
     url = Application.get_env(:location_tracker_device, :server_url)
 
@@ -19,13 +21,13 @@ defmodule LocationTrackerDevice.SocketClient do
     {:connect, url, [token: token], %{}}
   end
 
-  def handle_info({:join, topic}, transport, state) do
-    Logger.info("joining the topic #{topic}")
+  def handle_info(:join, transport, state) do
+    Logger.info("joining the topic #{@channel_topic}")
 
-    case GenSocketClient.join(transport, topic) do
+    case GenSocketClient.join(transport, @channel_topic) do
       {:error, reason} ->
-        Logger.error("error joining the topic #{topic}: #{inspect(reason)}")
-        Process.send_after(self(), {:join, topic}, :timer.seconds(1))
+        Logger.error("error joining the topic #{@channel_topic}: #{inspect(reason)}")
+        Process.send_after(self(), :join, :timer.seconds(1))
 
       {:ok, _ref} ->
         :ok
@@ -59,6 +61,7 @@ defmodule LocationTrackerDevice.SocketClient do
 
   def handle_connected(_transport, state) do
     Logger.info("connected")
+    send(self(), :join)
     {:ok, state}
   end
 
