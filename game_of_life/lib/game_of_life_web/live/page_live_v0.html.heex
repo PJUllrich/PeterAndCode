@@ -1,0 +1,35 @@
+<section class="centered-container">
+  <table>
+    <%= for row <- 1..@grid_size do %>
+    <tr>
+      <%=  for col <- 1..@grid_size do %>
+        <%= live_component GameOfLifeWeb.PageLive.CellComponent, id: "cell-#{row}-#{col}", row: row, col: col %>
+      <% end %>
+    </tr>
+    <% end %>
+  </table>
+</section>
+<section class="centered-container">
+  <button phx-click="start">Start</button>
+  <%= if @started do %>
+  <button phx-click="stop">Stop</button>
+  <% end %>
+</section>
+
+<section class="centered-container">
+  <table>
+    <%= for row <- 1..@grid_size do %>
+    <tr>
+      <%= for col <- 1..@grid_size do %>
+        <td id={"cell-#{row}-#{col}"} class={"cell #{ if Map.get(@grid, {row, col}), do: 'alive' }"} ></td>
+      <% end %>
+    </tr>
+    <% end %>
+  </table>
+</section>
+<section class="centered-container">
+  <button phx-click="start">Start</button>
+  <%= if @started do %>
+  <button phx-click="stop">Stop</button>
+  <% end %>
+</section>

@@ -9,15 +9,17 @@
 
 table {
   border-collapse: collapse;
+  font-size: 0;
 }
 
-.cell {
-  width: 1.5rem;
-  height: 1.5rem;
+td {
+  width: 0.1rem;
+  height: 0.1rem;
   border: 1px solid;
+  background-color: #000;
 }
 
-.alive {
-  background-color: #000;
+td:empty {
+  background-color: #fff;
 }
 
