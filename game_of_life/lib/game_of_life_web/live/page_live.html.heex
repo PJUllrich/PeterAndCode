@@ -9,11 +9,17 @@
     <% end %>
   </table>
 </section>
+
 <section class="centered-container">
-  <button phx-click="start">Start</button>
   <%= if not @cells_spawned do %>
-  <div>Spawing cells. Please wait...</div>
-  <% end %> <%= if @started do %>
-  <button phx-click="stop">Stop</button>
+    <div>Spawing cells. Please wait...</div>
+  <% end %>
+
+  <%= if @cells_spawned && not @started do %>
+    <button phx-click="start">Start</button>
+  <% end %>
+
+  <%= if @started do %>
+    <button phx-click="stop">Stop</button>
   <% end %>
 </section>
