@@ -10,12 +10,8 @@ defmodule GameOfLife.Cell do
   end
 
   def init(state) do
-    {:ok, state, {:continue, :set_alive}}
-  end
-
-  def handle_continue(:set_alive, %{alive?: alive?} = state) do
     if alive?, do: set_alive(state)
-    {:noreply, state}
+    {:ok, state}
   end
 
   def handle_info(:tick, %{alive?: alive?} = state) do
