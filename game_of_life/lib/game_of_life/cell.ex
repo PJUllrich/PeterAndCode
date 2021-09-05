@@ -9,11 +9,6 @@ defmodule GameOfLife.Cell do
     GenServer.start_link(__MODULE__, state, name: name)
   end
 
-  def init(%{alive?: alive?} = state) do
-    if alive?, do: set_alive(state)
-    {:ok, state}
-  end
-
   def handle_info(:tick, %{alive?: alive?} = state) do
     if alive?, do: notify_neighbours(state)
     {:noreply, state}
