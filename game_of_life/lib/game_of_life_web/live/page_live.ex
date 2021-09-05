@@ -3,7 +3,7 @@ defmodule GameOfLifeWeb.PageLive do
 
   alias GameOfLife.Cell
 
-  @grid_size 225
+  @grid_size 100
   @update_frequency_in_ms 500
 
   @impl true
@@ -17,7 +17,8 @@ defmodule GameOfLifeWeb.PageLive do
        staging_grid: grid,
        grid_size: @grid_size,
        cells: [],
-       started: false
+       started: false,
+       cells_spawned: false
      )}
   end
 
@@ -37,8 +38,8 @@ defmodule GameOfLifeWeb.PageLive do
 
   @impl true
   def handle_info(:spawn_cells, socket) do
-    cells = time(&spawn_cells/0)
-    {:noreply, assign(socket, cells: cells)}
+    cells = time(&spawn_cells_sync/0)
+    {:noreply, assign(socket, cells: cells, cells_spawned: true)}
   end
 
   @impl true
@@ -68,7 +69,26 @@ defmodule GameOfLifeWeb.PageLive do
     Map.new(grid)
   end
 
-  defp spawn_cells() do
+  defp spawn_cells_async() do
+    own_pid = self()
+
+    for row <- 1..@grid_size, col <- 1..@grid_size do
+      {row, col}
+    end
+    |> List.flatten()
+    |> Task.async_stream(fn {row, col} ->
+      {:ok, pid} =
+        Cell.start_link(%{lv_pid: own_pid, row: row, col: col, boundaries: [1, @grid_size]})
+
+      pid
+    end)
+    |> Enum.map(fn {:ok, pid} ->
+      Process.link(pid)
+      pid
+    end)
+  end
+
+  defp spawn_cells_sync() do
     own_pid = self()
 
     for row <- 1..@grid_size, col <- 1..@grid_size do

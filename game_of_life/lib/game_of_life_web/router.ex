@@ -18,6 +18,8 @@ defmodule GameOfLifeWeb.Router do
     pipe_through :browser
 
     live "/", PageLive, :index
+
+    live_dashboard "/dashboard", metrics: GameOfLifeWeb.Telemetry
   end
 
   # Other scopes may use custom stacks.

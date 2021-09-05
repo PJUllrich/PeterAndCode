@@ -9,9 +9,13 @@ defmodule GameOfLife.Cell do
     GenServer.start_link(__MODULE__, state, name: name)
   end
 
-  def init(%{alive?: alive?} = state) do
+  def init(state) do
+    {:ok, state, {:continue, :set_alive}}
+  end
+
+  def handle_continue(:set_alive, %{alive?: alive?} = state) do
     if alive?, do: set_alive(state)
-    {:ok, state}
+    {:noreply, state}
   end
 
   def handle_info(:tick, %{alive?: alive?} = state) do

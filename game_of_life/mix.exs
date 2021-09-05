@@ -20,7 +20,7 @@ defmodule GameOfLife.MixProject do
   def application do
     [
       mod: {GameOfLife.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -35,6 +35,7 @@ defmodule GameOfLife.MixProject do
     [
       {:phoenix, "~> 1.5.12"},
       {:phoenix_live_view, "~> 0.16.1"},
+      {:phoenix_live_dashboard, "~> 0.1"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_html, "~> 3.0"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
