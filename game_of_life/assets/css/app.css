@@ -16,10 +16,8 @@ table {
 td {
   width: 0.1rem;
   height: 0.1rem;
-  background-color: #000;
 }
 
-td:empty {
-  background-color: #fff;
+.a {
+background-color: #000;
 }
-

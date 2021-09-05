@@ -9,7 +9,7 @@ defmodule GameOfLife.Cell do
     GenServer.start_link(__MODULE__, state, name: name)
   end
 
-  def init(state) do
+  def init(%{alive?: alive?} = state) do
     if alive?, do: set_alive(state)
     {:ok, state}
   end

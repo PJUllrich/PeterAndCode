@@ -3,7 +3,7 @@ defmodule GameOfLifeWeb.PageLive do
 
   alias GameOfLife.Cell
 
-  @grid_size 100
+  @grid_size 200
   @update_frequency_in_ms 500
 
   @impl true
@@ -38,7 +38,7 @@ defmodule GameOfLifeWeb.PageLive do
 
   @impl true
   def handle_info(:spawn_cells, socket) do
-    cells = time(&spawn_cells_async/0)
+    cells = time(&spawn_cells_sync/0)
     {:noreply, assign(socket, cells: cells, cells_spawned: true)}
   end
 
