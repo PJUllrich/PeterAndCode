@@ -38,7 +38,7 @@ defmodule GameOfLifeWeb.PageLive do
 
   @impl true
   def handle_info(:spawn_cells, socket) do
-    cells = time(&spawn_cells_sync/0)
+    cells = time(&spawn_cells_async/0)
     {:noreply, assign(socket, cells: cells, cells_spawned: true)}
   end
 
@@ -72,20 +72,36 @@ defmodule GameOfLifeWeb.PageLive do
   defp spawn_cells_async() do
     own_pid = self()
 
-    for row <- 1..@grid_size, col <- 1..@grid_size do
-      {row, col}
-    end
-    |> List.flatten()
-    |> Task.async_stream(fn {row, col} ->
-      {:ok, pid} =
-        Cell.start_link(%{lv_pid: own_pid, row: row, col: col, boundaries: [1, @grid_size]})
+    {t0, pairs} =
+      :timer.tc(fn ->
+        for row <- 1..@grid_size, col <- 1..@grid_size do
+          {row, col}
+        end
+      end)
 
-      pid
-    end)
-    |> Enum.map(fn {:ok, pid} ->
-      Process.link(pid)
-      pid
-    end)
+    {t1, pairs} = :timer.tc(fn -> List.flatten(pairs) end)
+
+    stream =
+      Task.async_stream(pairs, fn {row, col} ->
+        {:ok, pid} =
+          Cell.start_link(%{lv_pid: own_pid, row: row, col: col, boundaries: [1, @grid_size]})
+
+        pid
+      end)
+
+    {t2, cells} =
+      :timer.tc(fn ->
+        Enum.map(stream, fn {:ok, pid} ->
+          Process.link(pid)
+          pid
+        end)
+      end)
+
+    IO.inspect("Generating list: #{div(t0, 1000)}ms")
+    IO.inspect("Flattening List: #{div(t1, 1000)}ms")
+    IO.inspect("Running async stream: #{div(t2, 1000)}ms")
+
+    cells
   end
 
   defp spawn_cells_sync() do
