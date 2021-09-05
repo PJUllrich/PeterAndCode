@@ -3,8 +3,8 @@ defmodule GameOfLifeWeb.PageLive do
 
   alias GameOfLife.Cell
 
-  @grid_size 200
-  @update_frequency_in_ms 500
+  @grid_size 317
+  @update_frequency_in_ms 250
 
   @impl true
   def mount(_params, _session, socket) do
