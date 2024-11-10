@@ -21,28 +21,24 @@ defmodule WebChainWeb.ChatLive do
         |> summarize(message)
         |> assign(link: message, chain: nil)
       else
-        add_message(socket, message)
+        send_message_to_llm(socket, message)
       end
 
-    {:noreply, assign(socket, :async_result, AsyncResult.loading())}
+    socket = socket |> add_message(message, true) |> assign(:async_result, AsyncResult.loading())
+
+    {:noreply, socket}
   end
 
   def handle_info({:chat_response, updated_chain, %LangChain.MessageDelta{} = delta}, socket) do
     socket =
       socket
-      |> stream_insert(:messages, %{
-        id: System.unique_integer([:positive]),
-        content: delta.content
-      })
+      |> add_message(delta.content, false)
       |> assign(:chain, updated_chain)
 
     socket =
       if delta.status == :complete do
         socket
-        |> stream_insert(:messages, %{
-          id: System.unique_integer([:positive]),
-          content: "\n\n\n\n"
-        })
+        |> add_message("\n\n\n\n\n\n\n", false)
         |> assign(:async_result, AsyncResult.ok(nil))
       else
         socket
@@ -63,10 +59,7 @@ defmodule WebChainWeb.ChatLive do
   def handle_async(:response, {:ok, {updated_chain, response}}, socket) do
     socket =
       socket
-      |> stream_insert(:messages, %{
-        id: System.unique_integer([:positive]),
-        content: response.content
-      })
+      |> add_message(response.content, false)
       |> assign(async_result: AsyncResult.ok(nil), chain: updated_chain)
 
     {:noreply, socket}
@@ -86,11 +79,19 @@ defmodule WebChainWeb.ChatLive do
     start_async(socket, :article, fn -> Readability.summarize(link) end)
   end
 
-  defp add_message(socket, message) do
+  defp send_message_to_llm(socket, message) do
     chain = socket.assigns.chain
 
     start_async(socket, :response, fn ->
       Claude.add_message(message, callback_handler(), chain)
     end)
+  end
+
+  defp add_message(socket, message, user_message? \\ false) do
+    stream_insert(socket, :messages, %{
+      id: System.unique_integer([:positive]),
+      content: message,
+      user_message?: user_message?
+    })
   end
 end
