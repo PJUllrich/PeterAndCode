@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "hls.js": "^1.5.15",
+    "vidstack": "^1.12.11"
+  }
+}
