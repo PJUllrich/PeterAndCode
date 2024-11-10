@@ -83,6 +83,9 @@ defmodule WebChainWeb do
     quote do
       # HTML escaping functionality
       import Phoenix.HTML
+      import Phoenix.HTML.Form
+      use PhoenixHTMLHelpers
+
       # Core UI components and translation
       import WebChainWeb.CoreComponents
       import WebChainWeb.Gettext

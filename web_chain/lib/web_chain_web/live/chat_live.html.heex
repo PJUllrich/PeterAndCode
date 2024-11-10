@@ -1,0 +1,18 @@
+<div class="flex flex-col h-screen py-8 mb-2">
+  <div id="messages" class="grow" phx-update="stream">
+    <div :for={{dom_id, message} <- @streams.messages} class="prose text-xs">
+      <span id={dom_id}><%= text_to_html(message.content) %></span>
+    </div>
+  </div>
+  <div :if={@async_result.loading} class="mx-auto text-xs text-gray-600">
+    <.icon name="hero-arrow-path" class="animate-spin w-4 h-4" /> Working...
+  </div>
+  <.form :let={form} for={%{}} as={:message} phx-submit="submit">
+    <.input
+      field={form[:message]}
+      type="text"
+      data-1p-ignore="true"
+      placeholder="Post a link of an article to summarize it"
+    />
+  </.form>
+</div>

@@ -20,6 +20,8 @@ if System.get_env("PHX_SERVER") do
   config :web_chain, WebChainWeb.Endpoint, server: true
 end
 
+config :langchain, anthropic_key: System.get_env("CLAUDE_API_KEY")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

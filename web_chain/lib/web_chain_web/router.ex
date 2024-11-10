@@ -17,7 +17,7 @@ defmodule WebChainWeb.Router do
   scope "/", WebChainWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", ChatLive
   end
 
   # Other scopes may use custom stacks.
