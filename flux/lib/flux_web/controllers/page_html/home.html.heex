@@ -1,0 +1,65 @@
+<LiveToast.toast_group flash={@flash} connected={assigns[:socket] != nil} corner={:top_right} />
+
+<div class="bg-black w-full">
+  <.alert title="Important update: Please read carefully" />
+  <.alert variant="neutral" title="System maintenance scheduled for tonight" />
+  <.alert variant="error" title="Critical error. Unable to process request" />
+  <.alert variant="warning" title="Low disk space. Action required soon" />
+  <.alert variant="success" title="Payment successfully processed. Thank you!" />
+  <.alert variant="info" title="New feature available. Check it out!" />
+
+  <.sheet id="sheet-2" placement="bottom" class="min-h-96 dark:text-white">
+    Content here
+  </.sheet>
+  <div class="w-80 mx-auto bg-black space-y-8">
+    <.button data-dialog-trigger="sheet-2">Bottom</.button>
+    <.navlist>
+      <.navlink navigate="/customers">Customers</.navlink>
+      <.navlink navigate="/subscriptions">Subscriptions</.navlink>
+      <.navlink navigate="/products">Products</.navlink>
+      <.navlink navigate="/coupons">Coupons</.navlink>
+    </.navlist>
+
+    <.form :let={form} for={%{}} as={:form}>
+      <.input
+        field={form[:full_name]}
+        label="Full name"
+        description="This is a description"
+        help_text="This is a help text"
+      >
+      </.input>
+    </.form>
+  </div>
+
+  <div class="mt-8 w-full mx-auto">
+    <span class="text-white">Some example text</span>
+    <.accordion>
+      <.accordion_item>
+        <:header class="text-xl text-green-300">
+          <span>What's the refund policy?</span>
+        </:header>
+        <:panel class="text-xs text-green-300 dark:text-green-300">
+          Our refund policy allows you to request...
+        </:panel>
+      </.accordion_item>
+
+      <.accordion_item>
+        <:header>
+          Can I upgrade my license later?
+        </:header>
+        <:panel>
+          Yes, you can upgrade your license at any...
+        </:panel>
+      </.accordion_item>
+
+      <.accordion_item>
+        <:header>
+          Do you offer technical support?
+        </:header>
+        <:panel>
+          Yes, we offer technical support via email.
+        </:panel>
+      </.accordion_item>
+    </.accordion>
+  </div>
+</div>
