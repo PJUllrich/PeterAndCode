@@ -77,11 +77,30 @@ defmodule Wal.Replication do
     %{type: :commit, lsn: to_lsn(lsn), lsn_end: to_lsn(lsn_end)}
   end
 
+  # Relation
+  # https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html#PROTOCOL-LOGICALREP-MESSAGE-FORMATS-RELATION
+  defp parse_payload(<<?R, relation_id::32, rest::bytes>>) do
+    # Strings in XLogData messages are Null/Zero-separated
+    [namespace, relation_name, rest] = String.split(rest, <<0>>, parts: 3)
+    <<replica_identity_setting::8, _column_count::16, columns::bytes>> = rest
+
+    columns = parse_relation_columns(columns)
+
+    %{
+      type: :relation,
+      relation_id: relation_id,
+      namespace: namespace,
+      relation_name: relation_name,
+      replica_identity_setting: replica_identity_setting,
+      columns: columns
+    }
+  end
+
   # Insert
   # https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html#PROTOCOL-LOGICALREP-MESSAGE-FORMATS-INSERT
   # Without transaction_id because
-  defp parse_payload(<<?I, oid::32, ?N, tuple_data::bytes>>) do
-    %{type: :insert, oid: oid, data: parse_tuple_data(tuple_data)}
+  defp parse_payload(<<?I, relation_id::32, ?N, tuple_data::bytes>>) do
+    %{type: :insert, relation_id: relation_id, data: parse_tuple_data(tuple_data)}
   end
 
   defp parse_payload(<<identifier::binary-size(1), rest::bytes>>) do
@@ -92,12 +111,13 @@ defmodule Wal.Replication do
   # TupleData
   # https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html#PROTOCOL-LOGICALREP-MESSAGE-FORMATS-TUPLEDATA
   defp parse_tuple_data(<<_column_count::16, data::bytes>>) do
-    parse_column(0, [], data)
+    parse_tuple_data_column(data)
   end
 
-  defp parse_column(_idx, columns, <<>>), do: Enum.reverse(columns)
+  defp parse_tuple_data_column(data, columns \\ [])
+  defp parse_tuple_data_column(<<>>, columns), do: Enum.reverse(columns)
 
-  defp parse_column(idx, columns, data) do
+  defp parse_tuple_data_column(data, columns) do
     <<type::binary-size(1), length::32, value::bytes-size(length), data::bytes>> = data
 
     type =
@@ -108,7 +128,26 @@ defmodule Wal.Replication do
         <<?b>> -> :binary
       end
 
-    column = %{idx: idx, type: type, length: length, value: value}
-    parse_column(idx + 1, [column | columns], data)
+    column = %{type: type, length: length, value: value}
+    parse_tuple_data_column(data, [column | columns])
+  end
+
+  defp parse_relation_columns(data, columns \\ [])
+  defp parse_relation_columns(<<>>, columns), do: Enum.reverse(columns)
+
+  defp parse_relation_columns(data, columns) do
+    <<flag::8, data::bytes>> = data
+
+    [column_name, <<data_type_oid::32, type_modifier::32, data::bytes>>] =
+      String.split(data, <<0>>, parts: 2)
+
+    column = %{
+      flag: flag,
+      name: column_name,
+      data_type_oid: data_type_oid,
+      type_modifier: type_modifier
+    }
+
+    parse_relation_columns(data, [column | columns])
   end
 end
