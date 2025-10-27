@@ -55,17 +55,29 @@ defmodule Wal.Meetings do
     |> Repo.insert()
   end
 
+  @default_attrs %{
+    title: "Test Meeting",
+    from: ~U[2025-01-01 10:00:00Z],
+    until: ~U[2025-01-01 11:00:00Z]
+  }
+
   @doc "Creates a demo meeting."
   def create_demo_meeting(attrs \\ %{}) do
-    default_attrs = %{
-      title: "Test Meeting",
-      from: ~U[2025-01-01 10:00:00Z],
-      until: ~U[2025-01-01 11:00:00Z]
-    }
-
-    default_attrs
+    @default_attrs
     |> Map.merge(attrs)
     |> create_meeting()
+  end
+
+  @doc "Create multiple demo meetings"
+  def create_demo_meetings(count) do
+    attrs =
+      Map.merge(@default_attrs, %{
+        inserted_at: {:placeholder, :now},
+        updated_at: {:placeholder, :now}
+      })
+
+    meetings = List.duplicate(attrs, count)
+    Repo.insert_all(Meeting, meetings, placeholders: %{now: DateTime.utc_now(:second)})
   end
 
   @doc """

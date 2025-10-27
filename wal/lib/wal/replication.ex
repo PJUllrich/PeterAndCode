@@ -16,13 +16,13 @@ defmodule Wal.Replication do
 
   @impl Postgrex.ReplicationConnection
   def init(:ok) do
-    {:ok, %{step: :disconnected}}
+    {:ok, %{step: :disconnected, messages: [], relations: %{}}}
   end
 
   @impl Postgrex.ReplicationConnection
   def handle_connect(state) do
     query =
-      "START_REPLICATION SLOT postgrex LOGICAL 0/0 (proto_version '4', publication_names 'postgrex_publication')"
+      "START_REPLICATION SLOT postgrex LOGICAL 0/0 (proto_version '1', publication_names 'postgrex_publication')"
 
     Logger.debug(query)
     {:stream, query, [], %{state | step: :streaming}}
@@ -47,22 +47,20 @@ defmodule Wal.Replication do
 
   # XLogData
   # https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-STANDBY-STATUS-UPDATE
-  def handle_data(<<?w, wal_start::64, wal_end::64, _server_time::64, payload::bytes>>, state) do
-    message = parse_payload(payload)
-    IO.inspect([to_lsn(wal_start), to_lsn(wal_end), message])
+  def handle_data(<<?w, raw_lsn::64, _latest_lsn::64, _server_time::64, payload::bytes>>, state) do
+    payload = parse_payload(payload)
+
+    message = %{
+      lsn: to_lsn(raw_lsn),
+      type: payload.type,
+      payload: payload
+    }
+
+    # IO.inspect(message)
+
+    state = handle_message(message, state)
+
     {:noreply, state}
-  end
-
-  @epoch DateTime.to_unix(~U[2000-01-01 00:00:00Z], :microsecond)
-  defp current_time, do: System.os_time(:microsecond) - @epoch
-
-  defp to_lsn(integer) when is_integer(integer) do
-    <<xlogid::32, xrecoff::32>> = <<integer::64>>
-
-    left = xlogid |> Integer.to_string(16) |> String.upcase()
-    right = xrecoff |> Integer.to_string(16) |> String.upcase()
-
-    "#{left}/#{right}"
   end
 
   # Begin
@@ -74,7 +72,7 @@ defmodule Wal.Replication do
   # Commit
   # https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html#PROTOCOL-LOGICALREP-MESSAGE-FORMATS-COMMIT
   defp parse_payload(<<?C, _flags::8, lsn::64, lsn_end::64, _timestamp::64>>) do
-    %{type: :commit, lsn: to_lsn(lsn), lsn_end: to_lsn(lsn_end)}
+    %{type: :commit, commit_lsn: to_lsn(lsn), tx_end_lsn: to_lsn(lsn_end)}
   end
 
   # Relation
@@ -83,6 +81,15 @@ defmodule Wal.Replication do
     # Strings in XLogData messages are Null/Zero-separated
     [namespace, relation_name, rest] = String.split(rest, <<0>>, parts: 3)
     <<replica_identity_setting::8, _column_count::16, columns::bytes>> = rest
+
+    # https://www.postgresql.org/docs/current/catalog-pg-class.html#CATALOG-PG-CLASS
+    replica_identity_setting =
+      case replica_identity_setting do
+        ?d -> :default
+        ?n -> :nothing
+        ?f -> :all_columns
+        ?i -> :index
+      end
 
     columns = parse_relation_columns(columns)
 
@@ -106,6 +113,46 @@ defmodule Wal.Replication do
   defp parse_payload(<<identifier::binary-size(1), rest::bytes>>) do
     Logger.warning("Unhandled message: #{identifier} - #{inspect(rest)}")
     nil
+  end
+
+  # When a RELATION message arrives, store its structure in memory.
+  defp handle_message(
+         %{type: :relation, payload: %{relation_id: relation_id} = payload} = _message,
+         %{relations: relations} = state
+       ) do
+    %{state | relations: Map.put(relations, relation_id, payload)}
+  end
+
+  # When a COMMIT message arrives, apply the changes.
+  defp handle_message(
+         %{type: :commit} = _message,
+         %{messages: messages, relations: relations} = state
+       ) do
+    changes =
+      Enum.reduce(messages, [], fn message, acc ->
+        if message.type in [:insert, :update, :delete] do
+          relation = Map.fetch!(relations, message.payload.relation_id)
+
+          data =
+            relation.columns
+            |> Enum.zip(message.payload.data)
+            |> Map.new(fn {%{name: name}, %{value: value}} ->
+              {name, value}
+            end)
+
+          [%{type: message.type, data: data} | acc]
+        else
+          acc
+        end
+      end)
+
+    IO.inspect(changes)
+
+    %{state | messages: []}
+  end
+
+  defp handle_message(message, %{messages: messages} = state) do
+    %{state | messages: [message | messages]}
   end
 
   # TupleData
@@ -149,5 +196,17 @@ defmodule Wal.Replication do
     }
 
     parse_relation_columns(data, [column | columns])
+  end
+
+  @epoch DateTime.to_unix(~U[2000-01-01 00:00:00Z], :microsecond)
+  defp current_time, do: System.os_time(:microsecond) - @epoch
+
+  defp to_lsn(integer) when is_integer(integer) do
+    <<xlogid::32, xrecoff::32>> = <<integer::64>>
+
+    left = xlogid |> Integer.to_string(16) |> String.upcase()
+    right = xrecoff |> Integer.to_string(16) |> String.upcase()
+
+    "#{left}/#{right}"
   end
 end
