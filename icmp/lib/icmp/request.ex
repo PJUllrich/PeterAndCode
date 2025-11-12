@@ -15,7 +15,8 @@ defmodule Icmp.Socket do
     ip
   end
 
-  def ping(pid, ip, payload, timeout \\ 15) do
+  def ping(pid, ip_or_domain, payload, timeout \\ 15) do
+    ip = if is_binary(ip_or_domain), do: decode_domain(ip_or_domain), else: ip_or_domain
     GenServer.call(pid, {:ping, ip, payload, timeout}, to_timeout(second: timeout + 1))
   end
 
@@ -89,6 +90,16 @@ defmodule Icmp.Socket do
     <<destination_addr::32, line_6::bytes>> = line_5
     <<type::8, code::8, checksum::16, payload::bytes>> = line_6
 
+    # To validate the IPv4 header checksum, compute checksum over entire header
+    # including the checksum field. The result should be zero.
+    # IHL is in 32-bit words, so multiply by 4 to get bytes
+    header_size = ihl * 4
+    <<header::bytes-size(header_size), _rest::bytes>> = packet
+    computed_checksum = checksum(header)
+
+    IO.inspect("Should be zero: <<0, 0>>")
+    IO.inspect(computed_checksum)
+
     data = parse_payload(type, code, payload)
 
     %{
@@ -101,12 +112,13 @@ defmodule Icmp.Socket do
       offset: offset,
       ttl: ttl,
       protocol: protocol,
-      header_checksum: header_checksum,
+      header_valid?: computed_checksum == <<0, 0>>,
+      header_checksum: <<header_checksum::16>>,
       source_addr: ip_tuple(source_addr),
       destination_addr: ip_tuple(destination_addr),
       type: type,
       code: code,
-      checksum: checksum,
+      checksum: <<checksum::16>>,
       data: data
     }
   end
