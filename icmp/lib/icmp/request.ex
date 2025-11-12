@@ -1,6 +1,8 @@
 defmodule Icmp.Socket do
   @moduledoc """
-  Starts a datagram UNIX socket and offers helper functions for sending out ICMP packages.
+  Opens an ICMP datagram network socket and offers helper functions for sending out ICMP packages.
+
+  Written with the help of https://github.com/hauleth/gen_icmp/blob/master/src/inet_icmp.erl
   """
 
   import Bitwise
@@ -15,8 +17,14 @@ defmodule Icmp.Socket do
     ip
   end
 
-  def ping(pid, ip_or_domain, timeout \\ 15) do
-    ip = if is_binary(ip_or_domain), do: decode_domain(ip_or_domain), else: ip_or_domain
+  def ping(pid, ip_or_domain, timeout \\ 15)
+
+  def ping(pid, domain, timeout) when is_binary(domain) do
+    ip = decode_domain(domain)
+    ping(pid, ip, timeout)
+  end
+
+  def ping(pid, ip, timeout) when is_tuple(ip) do
     GenServer.call(pid, {:ping, ip, timeout}, to_timeout(second: timeout + 1))
   end
 
@@ -71,7 +79,7 @@ defmodule Icmp.Socket do
   # 0                   1                   2                   3
   # 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  # |Version|  IHL  |Type  of Service|          Total Length       |
+  # |Version|  IHL  |Type of Service|          Total Length       |
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   # |          Identification       |Flags|     Fragment Offset   |
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -80,6 +88,8 @@ defmodule Icmp.Socket do
   # |                         Source Address                      |
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   # |                      Destination Address                    |
+  # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  # |                      (Optional options)                     |
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
   # |     Type      |   Code        |         Checksum            |
   # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -160,7 +170,7 @@ defmodule Icmp.Socket do
   def checksum(data), do: checksum(data, 0)
 
   defp checksum(<<val::16, rest::bytes>>, sum), do: checksum(rest, sum + val)
-  # Pad the data if it's not divisable by 16 bits
+  # Pad the data if it's not divisible by 16 bits
   defp checksum(<<val::8>>, sum), do: checksum(<<val, 0>>, sum)
 
   defp checksum(<<>>, sum) do
