@@ -10,13 +10,13 @@ defmodule Wal.Application do
     children = [
       WalWeb.Telemetry,
       Wal.Repo,
-      Wal.Replication,
+      Wal.Replication
       # {DNSCluster, query: Application.get_env(:wal, :dns_cluster_query) || :ignore},
       # {Phoenix.PubSub, name: Wal.PubSub},
       # Start a worker by calling: Wal.Worker.start_link(arg)
       # {Wal.Worker, arg},
       # Start to serve requests, typically the last entry
-      WalWeb.Endpoint
+      # WalWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

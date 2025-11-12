@@ -46,8 +46,8 @@ defmodule Wal.Decoder do
   end
 
   # Insert
+  # Without transaction_id because we are not streaming transactions
   # https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html#PROTOCOL-LOGICALREP-MESSAGE-FORMATS-INSERT
-  # Without transaction_id because
   def parse(<<?I, relation_id::32, ?N, tuple_data::bytes>>) do
     %{type: :insert, relation_id: relation_id, data: parse_tuple_data(tuple_data)}
   end
@@ -102,12 +102,12 @@ defmodule Wal.Decoder do
     parse_relation_columns(data, [column | columns])
   end
 
-  defp to_lsn(integer) when is_integer(integer) do
-    <<xlogid::32, xrecoff::32>> = <<integer::64>>
+  defp to_lsn(lsn_int) when is_integer(lsn_int) do
+    <<xlogid::32, xrecoff::32>> = <<lsn_int::64>>
 
-    left = xlogid |> Integer.to_string(16) |> String.upcase()
-    right = xrecoff |> Integer.to_string(16) |> String.upcase()
+    file_id = xlogid |> Integer.to_string(16) |> String.upcase()
+    offset = xrecoff |> Integer.to_string(16) |> String.upcase()
 
-    "#{left}/#{right}"
+    "#{file_id}/#{offset}"
   end
 end

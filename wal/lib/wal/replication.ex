@@ -11,26 +11,34 @@ defmodule Wal.Replication do
       auto_reconnect: true
     ]
 
-    Postgrex.ReplicationConnection.start_link(__MODULE__, :ok, extra_opts ++ config)
+    Postgrex.ReplicationConnection.start_link(
+      __MODULE__,
+      :ok,
+      extra_opts ++ config
+    )
   end
 
   @impl Postgrex.ReplicationConnection
   def init(:ok) do
-    {:ok, %{step: :disconnected, messages: [], relations: %{}}}
+    {:ok, %{messages: [], relations: %{}}}
   end
 
   @impl Postgrex.ReplicationConnection
   def handle_connect(state) do
     query =
-      "START_REPLICATION SLOT postgrex LOGICAL 0/0 (proto_version '1', publication_names 'postgrex_publication')"
+      """
+      START_REPLICATION SLOT postgrex
+      LOGICAL 0/0
+      (proto_version '1', publication_names 'postgrex_publication')
+      """
 
     Logger.debug(query)
-    {:stream, query, [], %{state | step: :streaming}}
+    {:stream, query, [], state}
   end
 
-  @impl Postgrex.ReplicationConnection
   # Primary Keep Alive Message
   # https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-PRIMARY-KEEPALIVE-MESSAGE
+  @impl Postgrex.ReplicationConnection
   def handle_data(<<?k, wal_end::64, _server_time::64, should_reply::8>>, state) do
     messages =
       case should_reply do
@@ -47,15 +55,19 @@ defmodule Wal.Replication do
 
   # XLogData
   # https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-STANDBY-STATUS-UPDATE
-  def handle_data(<<?w, raw_lsn::64, _latest_lsn::64, _server_time::64, payload::bytes>>, state) do
+  def handle_data(<<?w, raw_lsn::64, latest_lsn::64, _server_time::64, payload::bytes>>, state) do
     payload = Wal.Decoder.parse(payload)
+    {:ok, lsn} = Postgrex.ReplicationConnection.encode_lsn(raw_lsn)
+    {:ok, latest_lsn} = Postgrex.ReplicationConnection.encode_lsn(latest_lsn)
 
     message = %{
-      lsn: raw_lsn,
+      lsn: lsn,
+      latest_lsn: latest_lsn,
       type: payload.type,
       payload: payload
     }
 
+    Logger.debug(message)
     state = handle_message(message, state)
 
     {:noreply, state}
