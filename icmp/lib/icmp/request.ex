@@ -15,9 +15,9 @@ defmodule Icmp.Socket do
     ip
   end
 
-  def ping(pid, ip_or_domain, payload, timeout \\ 15) do
+  def ping(pid, ip_or_domain, timeout \\ 15) do
     ip = if is_binary(ip_or_domain), do: decode_domain(ip_or_domain), else: ip_or_domain
-    GenServer.call(pid, {:ping, ip, payload, timeout}, to_timeout(second: timeout + 1))
+    GenServer.call(pid, {:ping, ip, timeout}, to_timeout(second: timeout + 1))
   end
 
   @doc "Stops the Socket GenServer"
@@ -31,25 +31,31 @@ defmodule Icmp.Socket do
     :socket.open(:inet, :dgram, :icmp)
   end
 
-  def handle_call({:ping, ip, payload, timeout}, _from, socket) do
+  def handle_call({:ping, ip, timeout}, _from, socket) do
     # Echo Request
     type = 8
     code = 0
     id = :rand.uniform(65535)
     sequence = 1
+    payload = "ping"
 
     packet = encode(type, code, id, sequence, payload)
 
     dest_addr = %{family: :inet, addr: ip}
-    :socket.sendto(socket, packet, dest_addr)
 
-    result =
-      with {:ok, {_source, reply_packet}} <-
-             :socket.recvfrom(socket, [], to_timeout(second: timeout)) do
-        decode(reply_packet, id, sequence)
+    {time, result} =
+      :timer.tc(fn ->
+        :socket.sendto(socket, packet, dest_addr)
+        :socket.recvfrom(socket, [], to_timeout(second: timeout))
+      end)
+
+    data =
+      case result do
+        {:ok, {_source, reply_packet}} -> decode(reply_packet, id, sequence)
+        error -> error
       end
 
-    {:reply, result, socket}
+    {:reply, {time, data}, socket}
   end
 
   defp encode(type, code, id, sequence, payload) do
@@ -83,24 +89,33 @@ defmodule Icmp.Socket do
   # This is an IPv4 Header: https://en.wikipedia.org/wiki/IPv4
   # Taken from: https://book.huihoo.com/iptables-tutorial/x1078.htm
   defp decode(packet, _id, _sequence) do
-    <<ihl_version::4, ihl::4, tos::8, total_length::16, line_2::bytes>> = packet
-    <<identification::16, flags::3, offset::13, line_3::bytes>> = line_2
-    <<ttl::8, protocol::8, header_checksum::16, line_4::bytes>> = line_3
-    <<source_addr::32, line_5::bytes>> = line_4
-    <<destination_addr::32, line_6::bytes>> = line_5
-    <<type::8, code::8, checksum::16, payload::bytes>> = line_6
+    <<_ihl_version::4, ihl::4, _rest::bytes>> = packet
+    <<header::bytes-size(ihl * 4), payload::bytes>> = packet
 
-    # To validate the IPv4 header checksum, compute checksum over entire header
-    # including the checksum field. The result should be zero.
-    # IHL is in 32-bit words, so multiply by 4 to get bytes
-    header_size = ihl * 4
-    <<header::bytes-size(header_size), _rest::bytes>> = packet
-    computed_checksum = checksum(header)
+    <<
+      # Line 1
+      ihl_version::4,
+      ihl::4,
+      tos::8,
+      total_length::16,
+      # Line 2
+      identification::16,
+      flags::3,
+      offset::13,
+      # Line 3
+      ttl::8,
+      protocol::8,
+      header_checksum::16,
+      # Line 4
+      source_addr::32,
+      # Line 5
+      destination_addr::32,
+      options::bytes
+    >> = header
 
-    IO.inspect("Should be zero: <<0, 0>>")
-    IO.inspect(computed_checksum)
+    <<type::8, code::8, checksum::16, data::bytes>> = payload
 
-    data = parse_payload(type, code, payload)
+    info = parse_payload(type, code, data)
 
     %{
       ihl_version: ihl_version,
@@ -112,14 +127,14 @@ defmodule Icmp.Socket do
       offset: offset,
       ttl: ttl,
       protocol: protocol,
-      header_valid?: computed_checksum == <<0, 0>>,
+      options: options,
       header_checksum: <<header_checksum::16>>,
       source_addr: ip_tuple(source_addr),
       destination_addr: ip_tuple(destination_addr),
       type: type,
       code: code,
       checksum: <<checksum::16>>,
-      data: data
+      info: info
     }
   end
 
