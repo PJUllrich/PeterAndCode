@@ -6,9 +6,15 @@ defmodule Icmp.Ping do
   import Bitwise
 
   @doc "Send a Ping request to a given domain."
-  def send(domain, timeout \\ 15) when is_binary(domain) do
-    {:ok, {:hostent, _, _, :inet, 4, [ip | _]}} = :inet.gethostbyname(String.to_charlist(domain))
+  def send(domain, ttl \\ 128, timeout \\ 15)
 
+  def send(domain, ttl, timeout) when is_binary(domain) do
+    domain
+    |> get_ip()
+    |> send(ttl, timeout)
+  end
+
+  def send(ip, ttl, timeout) when is_tuple(ip) do
     # Echo Request
     type = 8
     code = 0
@@ -20,21 +26,56 @@ defmodule Icmp.Ping do
 
     {:ok, pid} = Icmp.Socket.start_link([])
 
-    response = Icmp.Socket.send(pid, packet, ip, timeout)
+    response = Icmp.Socket.send(pid, packet, ip, ttl, timeout)
 
     :ok = Icmp.Socket.stop(pid)
 
     with {:ok, time, reply_packet} <- response do
-      decode(reply_packet, time)
+      {:ok, decode(reply_packet, time)}
     end
   end
 
+  @doc "Returns the IPv4 as Tuple for a given Domain."
+  def get_ip(domain) when is_binary(domain) do
+    {:ok, {:hostent, _, _, :inet, 4, [ip | _]}} = :inet.gethostbyname(String.to_charlist(domain))
+    ip
+  end
+
+  @doc "Returns the domain for a given IP."
+  def get_domain(ip) when is_tuple(ip) do
+    with {:ok, {:hostent, domain, [], :inet, _version, _ip}} <- :inet_res.gethostbyaddr(ip) do
+      {:ok, List.to_string(domain)}
+    end
+  end
+
+  # Builds an ICMP packet which consists of a header and data section.
+  #
+  # 0                   1                   2                   3
+  # 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  # |      Type     |      Code     |           Checksum          |
+  # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  # |     Rest of Header - Varies based on ICMP type and code     |
+  # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  # |                             Data                            |
+  # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  #
   defp encode(type, code, id, sequence, payload) do
     header = <<type, code, 0::16, id::16, sequence::16>>
 
     checksum = checksum(header <> payload)
 
-    <<type::8, code::8, checksum::binary-size(2), id::16, sequence::16, payload::binary>>
+    <<
+      # Line 1
+      type::8,
+      code::8,
+      checksum::binary-size(2),
+      # Line 2
+      id::16,
+      sequence::16,
+      # Line 3
+      payload::binary
+    >>
   end
 
   # The IPv4 header of the ICMP response packet looks like this:
@@ -90,6 +131,16 @@ defmodule Icmp.Ping do
 
     info = parse_payload(type, code, data)
 
+    source_addr = ip_tuple(source_addr)
+
+    source_domain =
+      case get_domain(source_addr) do
+        {:ok, domain} -> domain
+        _error -> :inet.ntoa(source_addr)
+      end
+
+    destination_addr = ip_tuple(destination_addr)
+
     %{
       time: time,
       ihl_version: ihl_version,
@@ -103,8 +154,9 @@ defmodule Icmp.Ping do
       protocol: protocol,
       options: options,
       header_checksum: <<header_checksum::16>>,
-      source_addr: ip_tuple(source_addr),
-      destination_addr: ip_tuple(destination_addr),
+      source_addr: source_addr,
+      source_domain: source_domain,
+      destination_addr: destination_addr,
       type: type,
       code: code,
       checksum: <<checksum::16>>,
@@ -131,11 +183,6 @@ defmodule Icmp.Ping do
     }
   end
 
-  defp ip_tuple(ip) when is_integer(ip) do
-    <<a::8, b::8, c::8, d::8>> = <<ip::32>>
-    {a, b, c, d}
-  end
-
   def checksum(data), do: checksum(data, 0)
 
   defp checksum(<<val::16, rest::bytes>>, sum), do: checksum(rest, sum + val)
@@ -145,5 +192,10 @@ defmodule Icmp.Ping do
   defp checksum(<<>>, sum) do
     <<left::16, right::16>> = <<sum::32>>
     <<bnot(left + right)::big-integer-size(16)>>
+  end
+
+  defp ip_tuple(ip) when is_integer(ip) do
+    <<a::8, b::8, c::8, d::8>> = <<ip::32>>
+    {a, b, c, d}
   end
 end

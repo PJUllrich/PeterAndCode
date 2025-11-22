@@ -1,6 +1,6 @@
 defmodule Icmp.Socket do
   @moduledoc """
-  Opens an ICMP datagram network socket and offers helper functions for sending out ICMP packages.
+  Opens an ICMP datagram network socket and sends out ICMP packets through it.
 
   Written with the help of https://github.com/hauleth/gen_icmp/blob/master/src/inet_icmp.erl
   """
@@ -11,8 +11,8 @@ defmodule Icmp.Socket do
   end
 
   @doc "Sends an ICMP packet to a given IP with a given timeout"
-  def send(pid, packet, ip, timeout) do
-    GenServer.call(pid, {:send, ip, packet, timeout}, to_timeout(second: timeout + 1))
+  def send(pid, packet, ip, ttl, timeout) do
+    GenServer.call(pid, {:send, ip, packet, ttl, timeout}, to_timeout(second: timeout + 1))
   end
 
   @doc "Stops the Socket GenServer"
@@ -26,14 +26,16 @@ defmodule Icmp.Socket do
     :socket.open(:inet, :dgram, :icmp)
   end
 
-  def handle_call({:send, ip, packet, timeout}, _from, socket) do
-    response = do_send(packet, ip, timeout, socket)
+  def handle_call({:send, ip, packet, ttl, timeout}, _from, socket) do
+    response = do_send(ip, packet, ttl, timeout, socket)
 
     {:reply, response, socket}
   end
 
-  defp do_send(packet, ip, timeout, socket) do
+  defp do_send(ip, packet, ttl, timeout, socket) do
     dest_addr = %{family: :inet, addr: ip}
+
+    :ok = :socket.setopt(socket, {:ip, :ttl}, ttl)
 
     {time, result} =
       :timer.tc(fn ->
@@ -41,9 +43,8 @@ defmodule Icmp.Socket do
         :socket.recvfrom(socket, [], to_timeout(second: timeout))
       end)
 
-    case result do
-      {:ok, {_source, reply_packet}} -> {:ok, time, reply_packet}
-      error -> error
+    with {:ok, {_source, reply_packet}} <- result do
+      {:ok, time, reply_packet}
     end
   end
 end
