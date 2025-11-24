@@ -6,6 +6,7 @@ defmodule Traceroute do
   require Logger
 
   alias Traceroute.Ping
+  alias Traceroute.Utils
 
   def run(domain, opts \\ []) when is_binary(domain) do
     default_opts = [
@@ -17,7 +18,7 @@ defmodule Traceroute do
 
     opts = default_opts |> Keyword.merge(opts) |> Map.new()
 
-    ip = Ping.get_ip(domain)
+    ip = Utils.get_ip(domain)
 
     do_run(ip, 1, opts.max_hops, opts.max_retries, [], opts)
   end
@@ -28,7 +29,8 @@ defmodule Traceroute do
 
   defp do_run(ip, ttl, max_hops, retries, trace, opts) do
     case Ping.run(ip, ttl: ttl, timeout: opts.timeout, protocol: opts.protocol) do
-      {:ok, %{time: time, source_addr: source_addr} = response} when source_addr == ip ->
+      {:ok, %{time: time, header: %{source_addr: source_addr}} = response}
+      when source_addr == ip ->
         log_response(ttl, response)
         trace = [{ttl, time, response} | trace]
         {:ok, trace}
@@ -56,9 +58,12 @@ defmodule Traceroute do
     end
   end
 
-  defp log_response(ttl, %{time: time, source_domain: source_domain, source_addr: source_addr}) do
+  defp log_response(ttl, %{
+         time: time,
+         header: %{source_domain: source_domain, source_addr: source_addr}
+       }) do
     request_time = Float.round(time / 1000, 3)
-    IO.puts("#{ttl} #{source_domain} (#{:inet.ntoa(source_addr)}) #{request_time}ms")
+    IO.write("\r#{ttl} #{source_domain} (#{:inet.ntoa(source_addr)}) #{request_time}ms\n")
   end
 
   defp log_timeout(ttl, error) do
@@ -66,6 +71,6 @@ defmodule Traceroute do
   end
 
   defp log_error(ttl, error) do
-    IO.puts("#{ttl} #{error}")
+    IO.write("\r#{ttl} #{error}\n")
   end
 end

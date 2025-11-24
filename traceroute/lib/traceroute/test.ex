@@ -10,7 +10,7 @@ defmodule Traceroute.Test do
   def send_icmp() do
     {:ok, socket} = :socket.open(:inet, :dgram, :icmp)
 
-    ip = Traceroute.Ping.get_ip("google.com")
+    ip = Traceroute.Utils.get_ip("google.com")
     dest_addr = %{family: :inet, addr: ip}
 
     # Echo Request
@@ -20,10 +20,10 @@ defmodule Traceroute.Test do
     sequence = 1
     payload = "ping"
 
-    packet = Traceroute.Ping.encode(type, code, id, sequence, payload)
+    datagram = Traceroute.Protocols.Icmp.encode_datagram(type, code, id, sequence, payload)
 
     # :ok = :socket.setopt(socket, {:ip, :ttl}, 3)
-    :socket.sendto(socket, packet, dest_addr)
+    :socket.sendto(socket, datagram, dest_addr)
 
     case :socket.recvfrom(socket, [], 5000) do
       {:ok, {_source, data}} ->
@@ -36,10 +36,32 @@ defmodule Traceroute.Test do
     :socket.close(socket)
   end
 
+  def send_udp() do
+    {:ok, socket} = :socket.open(:inet, :dgram, :udp)
+
+    # ip = Traceroute.Utils.get_ip("google.com")
+    dest_addr = %{family: :inet, addr: {8, 8, 8, 8}, port: 33434}
+
+    payload = "probe"
+
+    :socket.sendto(socket, payload, dest_addr)
+
+    # case :socket.recvfrom(socket, [], 5000) do
+    #   {:ok, {_source, data}} ->
+    #     IO.inspect(data, label: "Server responded!")
+
+    #   {:error, :timeout} ->
+    #     IO.inspect("No response. Timeout")
+    # end
+
+    :socket.close(socket)
+  end
+
   # Callbacks
 
-  def init(_args) do
-    {:ok, socket} = :socket.open(:inet, :dgram, :icmp)
+  def init(args) do
+    protocol = Keyword.get(args, :protocol, :icmp)
+    {:ok, socket} = :socket.open(:inet, :dgram, protocol)
     send(self(), :start_listen)
     {:ok, socket}
   end

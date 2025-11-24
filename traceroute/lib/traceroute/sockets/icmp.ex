@@ -1,4 +1,4 @@
-defmodule Traceroute.Icmp do
+defmodule Traceroute.Sockets.Icmp do
   @moduledoc """
   Opens an ICMP datagram network socket and sends out ICMP packets through it.
 
@@ -6,6 +6,15 @@ defmodule Traceroute.Icmp do
   """
 
   use GenServer
+
+  @doc "Sends a packet through a temporary socket which is opened and closed for this packet."
+  def one_off_send(packet, ip, ttl, timeout) do
+    {:ok, pid} = start_link([])
+    response = send(pid, packet, ip, ttl, timeout)
+    stop(pid)
+
+    response
+  end
 
   @doc "Starts the Socket GenServer"
   def start_link(args) do
@@ -50,7 +59,7 @@ defmodule Traceroute.Icmp do
     {time, result} =
       :timer.tc(fn ->
         :socket.sendto(socket, packet, dest_addr)
-        :socket.recvfrom(socket, [], to_timeout(second: timeout)) |> IO.inspect()
+        :socket.recvfrom(socket, [], to_timeout(second: timeout))
       end)
 
     with {:ok, {_source, reply_packet}} <- result do

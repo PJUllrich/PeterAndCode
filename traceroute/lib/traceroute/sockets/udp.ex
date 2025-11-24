@@ -1,4 +1,4 @@
-defmodule Traceroute.Udp do
+defmodule Traceroute.Sockets.Udp do
   @moduledoc """
   Opens a UDP socket for sending probe packets and an ICMP socket for receiving responses.
 
@@ -12,7 +12,16 @@ defmodule Traceroute.Udp do
 
   use GenServer
 
-  @default_dest_port 33434
+  @default_dest_port 33_434
+
+  @doc "Sends a packet through a temporary socket which is opened and closed for this packet."
+  def one_off_send(packet, ip, ttl, timeout) do
+    {:ok, pid} = start_link([])
+    response = send(pid, packet, ip, ttl, timeout)
+    stop(pid)
+
+    response
+  end
 
   @doc "Starts the Socket GenServer"
   def start_link(args \\ []) do
