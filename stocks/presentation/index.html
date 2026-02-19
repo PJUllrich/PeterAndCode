@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>What is an MCP Server and Why Would You Need It?</title>
+        <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css" />
+        <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/night.css" />
+        <link rel="stylesheet" href="node_modules/reveal.js/plugin/highlight/monokai.css" />
+        <style>
+            .reveal h2 {
+                font-size: 1.4em;
+            }
+            .reveal code {
+                font-size: 0.85em;
+                background: rgba(255, 255, 255, 0.1);
+                padding: 0.1em 0.3em;
+                border-radius: 4px;
+            }
+            .reveal aside.notes {
+                font-size: 0.5em;
+            }
+            pre.mermaid {
+                box-shadow: none;
+                background: none;
+                margin: 0 auto;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <!-- Title -->
+                <section>
+                    <h1>What is an MCP Server?</h1>
+                    <h3>And why would you need it?</h3>
+                </section>
+
+                <!-- What is MCP? -->
+                <section>
+                    <h2>What is the Model Context Protocol?</h2>
+                    <ul>
+                        <li class="fragment">Open standard by Anthropic, released late 2024.</li>
+                        <li class="fragment">Adopted by all LLMs now.</li>
+                        <li class="fragment">A universal way for AI models to talk to external tools and data</li>
+                        <li class="fragment">&quot;USB-C for AI integrations&quot;</li>
+                    </ul>
+                </section>
+
+                <!-- MCP diagram -->
+                <section>
+                    <img src="mcp-simple-diagram.avif" alt="MCP simple diagram" />
+                </section>
+
+                <!-- MCP vs JSON API -->
+                <section>
+                    <h2>MCP vs. a Regular JSON API</h2>
+                    <ul>
+                        <li class="fragment">APIs are (usually) not discoverable, but documented</li>
+                        <li class="fragment">
+                            APIs have many custom endpoints <br />
+                            <code>/users/{id}</code> or <code>/products/new</code>
+                        </li>
+                        <li class="fragment">
+                            APIs behave differently for different HTTP verbs
+                            <code>DELETE</code> vs <code>PUT</code>
+                        </li>
+                        <li class="fragment">
+                            MCP servers are discoverable through a single route
+                            <code>/mcp</code> with <code>tools/list</code>
+                        </li>
+                        <li class="fragment">APIs use (usually) REST/GraphQL/gRPC/SOAP</li>
+                        <li class="fragment">MCP uses JSON-RPC 2.0</li>
+                    </ul>
+                    <aside class="notes">
+                        With a REST API, a human developer reads docs, figures out endpoints, writes integration code.
+                        With MCP, the tools are self-describing — the model reads the schema and decides what to call.
+                        You don't write glue code, you write tool descriptions. Also: JSON-RPC under the hood, not REST.
+                    </aside>
+                </section>
+
+                <!-- JSON-RPC vs REST -->
+                <section>
+                    <h2>JSON-RPC vs. REST</h2>
+                    <ul>
+                        <li class="fragment">
+                            <strong>REST</strong>
+                            <ul>
+                                <li class="fragment">resource-oriented <code>GET /users/123</code></li>
+                                <li class="fragment">
+                                    many endpoints<br />
+                                    <code>/users/new</code> vs <code>/products/:id/edit</code>
+                                </li>
+                                <li class="fragment">
+                                    HTTP verbs matter <br />
+                                    <code>GET /users</code> vs <code>DELETE /users</code>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="fragment">
+                            <strong>JSON-RPC</strong> — action oriented, single endpoint, method (e.g.
+                            <code>tools/list</code>) + params
+                        </li>
+                        <li class="fragment">
+                            MCP uses JSON-RPC 2.0 over POST, plus GET and DELETE for session management
+                        </li>
+                    </ul>
+                    <aside class="notes">
+                        REST is resource-oriented: GET /users/123, DELETE /posts/456 — the URL and HTTP verb carry
+                        meaning. JSON-RPC is action-oriented: you POST to one endpoint with a method name and params.
+                        For MCP this makes sense — you're calling tools, not managing resources. Every request is just
+                        {method: "tools/call", params: {...}}. Simpler to implement, no bikeshedding over URL structure.
+                    </aside>
+                </section>
+
+                <!-- When to use MCP -->
+                <section>
+                    <h2>When MCP over an API?</h2>
+                    <ul>
+                        <li class="fragment">
+                            You want an AI agent to interact with your system
+                            <i>(without writing bash scripts that call your API)</i>
+                        </li>
+                        <li class="fragment">You need tool discovery — the model explores what's available</li>
+                        <li class="fragment">
+                            You're building integrations across many AI clients
+                            <i>(Claude, Codex, ChatGPT, Windsurf)</i>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- Transports -->
+                <section>
+                    <section>
+                        <h2>Transports: STDIO, SSE, StreamableHTTP</h2>
+                        <ul>
+                            <li class="fragment"><strong>STDIO</strong> — local process, stdin/stdout pipes</li>
+                            <li class="fragment"><strong>SSE</strong> — HTTP + Server-Sent Events (deprecated)</li>
+                            <li class="fragment"><strong>StreamableHTTP</strong> — the current standard</li>
+                        </ul>
+                        <aside class="notes">
+                            <p>
+                                STDIO: simplest transport, spawn a child process and pipe JSON over stdin/stdout. Great
+                                for local tools like file access or git. But local-only.
+                            </p>
+                            <p>SSE had several problems:</p>
+                            <ul>
+                                <li>
+                                    Required two separate connections: POST for client-to-server, SSE for
+                                    server-to-client. Awkward behind load balancers and reverse proxies.
+                                </li>
+                                <li>
+                                    SSE connections are long-lived — doesn't work with serverless (Lambda, Cloud
+                                    Functions) where you pay per invocation and have execution time limits.
+                                </li>
+                                <li>No built-in session resumption — if the SSE connection drops, you lose state.</li>
+                                <li>Only supports text, no binary data.</li>
+                                <li>Some corporate proxies and firewalls interfere with SSE streams.</li>
+                                <li>The two-connection model meant CORS was more complex to configure.</li>
+                            </ul>
+                            <p>
+                                StreamableHTTP fixes all of this: single endpoint, works stateless (serverless-friendly)
+                                or stateful, and the server can choose to respond with plain JSON or upgrade to SSE on a
+                                per-request basis.
+                            </p>
+                        </aside>
+                    </section>
+                    <section>
+                        <h3>Old SSE Transport</h3>
+                        <!-- prettier-ignore -->
+                        <pre class="mermaid" style="transform: scale(0.85); transform-origin: top center">
+sequenceDiagram
+    participant Client
+    participant Server
+
+    Note over Client,Server: Connection 1 — SSE (long-lived)
+    Client->>Server: GET /sse
+    Server-->>Client: SSE stream opened (endpoint URI)
+
+    Note over Client,Server: Connection 2 — POST requests
+    Client->>Server: POST /messages (initialize)
+    Server-->>Client: SSE event (result)
+
+    Client->>Server: POST /messages (tools/call)
+    Server-->>Client: SSE event (result)
+
+    Note over Client,Server: All responses come over the SSE stream
+                        </pre>
+                    </section>
+                </section>
+
+                <!-- Deep dive StreamableHTTP -->
+                <section>
+                    <section>
+                        <h2>StreamableHTTP</h2>
+                        <ul>
+                            <li class="fragment">Single HTTP endpoint <code>GET/POST/DELETE /mcp</code></li>
+                            <li class="fragment">Client sends JSON-RPC request</li>
+                            <li class="fragment">Server responds with either a JSON-RPC response or an SSE stream</li>
+                            <li class="fragment">
+                                Supports stateless and stateful sessions with <code>Mcp-Session-Id</code> header
+                            </li>
+                            <li class="fragment">GET for server-initiated notifications, DELETE to end session</li>
+                        </ul>
+                        <aside class="notes">
+                            Everything goes through a single /mcp endpoint. POST for all client requests, GET to open an
+                            SSE stream for server-initiated messages, DELETE to tear down the session. Under the hood
+                            it's all JSON-RPC 2.0. The server can choose to respond with a plain JSON body or upgrade to
+                            an SSE stream for long-running operations.
+                        </aside>
+                    </section>
+                    <section>
+                        <h3>StreamableHTTP Flow</h3>
+                        <!-- prettier-ignore -->
+                        <pre class="mermaid" style="transform: scale(0.7); transform-origin: top center">
+sequenceDiagram
+    participant Client
+    participant Server
+
+    Client->>Server: POST /mcp (initialize, no session ID)
+    Server-->>Client: 200 JSON-RPC result + Mcp-Session-Id
+
+    Client->>Server: POST /mcp (initialized, with Mcp-Session-Id)
+    Server-->>Client: 202 Accepted
+
+    Note over Client,Server: Open SSE stream
+
+    Client->>Server: GET /mcp (open SSE stream)
+    Server-->>Client: SSE connection established
+
+    Note over Client,Server: Client requests
+
+    Client->>Server: POST /mcp (tools/list)
+    Server-->>Client: 200 JSON-RPC result (available tools)
+
+    Client->>Server: POST /mcp (tools/call)
+    alt Short response
+        Server-->>Client: 200 JSON-RPC result
+    else Streaming
+        Server-->>Client: 200 SSE stream (progress + result)
+    end
+
+    Client->>Server: DELETE /mcp (end session)
+    Server-->>Client: 200 OK
+                        </pre>
+                        <aside class="notes">
+                            Walk through the diagram: First POST has no session ID — that's the initialize request.
+                            Server responds with capabilities and a Mcp-Session-Id header. Client confirms with an
+                            initialized notification (gets 202 back, no body). Then client opens a GET SSE stream for
+                            server-pushed messages. After that, normal request/response flow — tools/list to discover
+                            tools, tools/call to invoke them. Server can respond inline or stream via SSE for long ops.
+                            DELETE cleanly ends the session.
+                        </aside>
+                    </section>
+                    <section>
+                        <h2>Keep-Alive & Expiration</h2>
+                        <!-- prettier-ignore -->
+                        <pre class="mermaid" style="transform: scale(0.85); transform-origin: top center">
+sequenceDiagram
+    participant Client
+    participant Server
+
+    Note over Client,Server: Session active
+
+    Client->>Server: GET /mcp (open SSE stream)
+    Server-->>Client: SSE keep-alive comments
+
+    loop Keep-alive
+        Client->>Server: POST /mcp (ping)
+        Server-->>Client: 200 pong
+    end
+
+    Note over Server: Session expires (timeout)
+
+    Client->>Server: POST /mcp (tools/call)
+    Server-->>Client: 404 Session not found
+
+    Note over Client: Client must re-initialize
+                        </pre>
+                        <aside class="notes">
+                            The GET SSE stream also carries keep-alive comments (lines starting with colon) to prevent
+                            proxies/load balancers from closing idle connections. Client can also send ping requests. If
+                            the server decides to expire the session (timeout, resource limits, redeployment), the next
+                            client request gets a 404 — client knows to re-initialize. This is important for serverless
+                            deployments where you can't hold state forever.
+                        </aside>
+                    </section>
+                </section>
+
+                <!-- Primitives -->
+                <section>
+                    <h2>MCP Primitives</h2>
+                    <ul>
+                        <li class="fragment"><strong>Tools</strong> — functions the model can call</li>
+                        <li class="fragment"><strong>Resources</strong> — read-only data the model can pull in</li>
+                        <li class="fragment">
+                            <strong>ResourceTemplates</strong> — parameterized URIs for dynamic resources
+                        </li>
+                        <li class="fragment">
+                            <strong>Prompts</strong> — reusable prompt templates the user can invoke
+                        </li>
+                    </ul>
+                    <p><em>Demo time after this!</em></p>
+                    <aside class="notes">
+                        Tools are the big one — functions with side effects that the model can call (create a record,
+                        send an email, query a DB). Resources are read-only data sources the model can pull into context
+                        (think: a file, a DB row, a config). ResourceTemplates are like parameterized resource URIs —
+                        e.g. users://{id}/profile. Prompts are reusable prompt templates that the user (not the model)
+                        invokes — like slash commands. Will demo all of these next.
+                    </aside>
+                </section>
+
+                <!-- MCP vs ACP -->
+                <section>
+                    <h2>MCP vs. ACP</h2>
+                    <ul>
+                        <li class="fragment">MCP = Model ↔ Tools (single model, external capabilities)</li>
+                        <li class="fragment">ACP = Agent ↔ Agent (multi-agent communication)</li>
+                        <li class="fragment">ACP: discovery, delegation, handoff between autonomous agents</li>
+                        <li class="fragment">Complementary, not competing</li>
+                    </ul>
+                    <aside class="notes">
+                        MCP is about one model talking to tools and data. ACP (Agent-to-Agent Communication Protocol) is
+                        about multiple agents talking to each other — discovery, delegation, handoff. Think: one agent
+                        realizes it needs a specialist and hands off a sub-task. They solve different problems and can
+                        work together. ACP is newer and still evolving.
+                    </aside>
+                </section>
+
+                <!-- Demo -->
+                <section>
+                    <h1>Demo Time</h1>
+                    <aside class="notes">
+                        Show the MCP server running, connect with the inspector or Claude, demonstrate
+                        tools/resources/prompts in action.
+                    </aside>
+                </section>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+        <script src="node_modules/reveal.js/dist/reveal.js"></script>
+        <script src="node_modules/reveal.js/plugin/highlight/highlight.js"></script>
+        <script src="node_modules/reveal.js/plugin/notes/notes.js"></script>
+        <script src="node_modules/reveal.js/plugin/zoom/zoom.js"></script>
+        <script>
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: "dark",
+                sequence: { actorMargin: 120 },
+            });
+
+            Reveal.initialize({
+                hash: true,
+                plugins: [RevealHighlight, RevealNotes, RevealZoom],
+            }).then(() => {
+                mermaid.run({ nodes: document.querySelectorAll(".mermaid") });
+            });
+        </script>
+    </body>
+</html>
