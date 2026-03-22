@@ -23,7 +23,7 @@ defmodule MusicRecognition.MixProject do
       {:nx, "~> 0.9"},
       {:explorer, "~> 0.10"},
       {:exla, "~> 0.9"},
-      {:jason, "~> 1.4"}
+      {:req, "~> 0.5"}
     ]
   end
 end

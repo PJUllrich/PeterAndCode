@@ -52,9 +52,7 @@ defmodule Mix.Tasks.Music.Download do
 
   @impl Mix.Task
   def run(args) do
-    # Start HTTP client
-    Application.ensure_all_started(:inets)
-    Application.ensure_all_started(:ssl)
+    Mix.Task.run("app.start")
 
     {opts, _, _} =
       OptionParser.parse(args,
@@ -258,20 +256,11 @@ defmodule Mix.Tasks.Music.Download do
   end
 
   defp http_get_json(url) do
-    url_charlist = String.to_charlist(url)
+    case Req.get(url, retry: :transient, max_retries: 3) do
+      {:ok, %Req.Response{status: 200, body: body}} when is_map(body) ->
+        {:ok, body}
 
-    ssl_opts = [
-      ssl: [
-        verify: :verify_none,
-        depth: 10
-      ]
-    ]
-
-    case :httpc.request(:get, {url_charlist, []}, ssl_opts, body_format: :binary) do
-      {:ok, {{_, 200, _}, _headers, body}} ->
-        {:ok, Jason.decode!(body)}
-
-      {:ok, {{_, status, _}, _headers, body}} ->
+      {:ok, %Req.Response{status: status, body: body}} ->
         {:error, {:http_status, status, body}}
 
       {:error, reason} ->
@@ -280,29 +269,18 @@ defmodule Mix.Tasks.Music.Download do
   end
 
   defp download_file(url, filepath) do
-    url_charlist = String.to_charlist(url)
-
-    ssl_opts = [
-      ssl: [
-        verify: :verify_none,
-        depth: 10
-      ]
-    ]
-
-    case :httpc.request(:get, {url_charlist, []}, ssl_opts, body_format: :binary) do
-      {:ok, {{_, 200, _}, _headers, body}} ->
-        File.write!(filepath, body)
+    case Req.get(url, into: File.stream!(filepath), retry: :transient, max_retries: 3) do
+      {:ok, %Req.Response{status: 200}} ->
         :ok
 
-      {:ok, {{_, status, _}, _headers, _body}} ->
+      {:ok, %Req.Response{status: status}} ->
+        File.rm(filepath)
         {:error, {:http_status, status}}
 
       {:error, reason} ->
+        File.rm(filepath)
         {:error, reason}
     end
-
-  rescue
-    e -> {:error, Exception.message(e)}
   end
 
   defp sanitize_filename(artist, title) do
@@ -338,6 +316,7 @@ defmodule Mix.Tasks.Music.Download do
         }
       end)
 
-    File.write!(path, Jason.encode!(manifest, pretty: true))
+    json = manifest |> Jason.encode!(pretty: true)
+    File.write!(path, json)
   end
 end
