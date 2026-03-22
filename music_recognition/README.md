@@ -19,6 +19,31 @@ mix deps.get
 
 ## Quick Start
 
+### 0. Download Songs
+
+Download 100 CC-licensed songs from [Jamendo](https://www.jamendo.com/) (free, no account needed):
+
+```bash
+mix music.download
+```
+
+This downloads popular tracks across genres (pop, rock, jazz, electronic, etc.) into a `songs/` directory. The directory is gitignored.
+
+Options:
+
+```bash
+# Download a different number of songs
+mix music.download --count 50
+
+# Download specific genres
+mix music.download --tags rock,blues,jazz
+
+# Download into a custom directory
+mix music.download --dir /path/to/my/music
+```
+
+Or just use your own music — drop mp3/wav/flac/ogg files into any directory.
+
 ### 1. Build a Fingerprint Database
 
 Point it at a directory containing audio files (mp3, wav, flac, ogg, m4a):
@@ -236,6 +261,9 @@ lib/
     matcher.ex                      # Recognition pipeline orchestrator
     evaluation.ex                   # Accuracy benchmarking framework
     demo.ex                         # Interactive demo with playback
+  mix/tasks/
+    music.download.ex               # Mix task to download songs from Jamendo
 test/
   music_recognition_test.exs        # Full pipeline tests
+songs/                              # Downloaded songs (gitignored)
 ```

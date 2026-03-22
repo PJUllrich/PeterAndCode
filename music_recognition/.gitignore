@@ -7,7 +7,4 @@ erl_crash.dump
 *.ez
 *.beam
 /tmp/
-*.wav
-*.mp3
-*.flac
-!/test/fixtures/*.wav
+/songs/
