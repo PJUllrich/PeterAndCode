@@ -1,79 +1,44 @@
 defmodule Mix.Tasks.Music.Download do
   @moduledoc """
-  Downloads CC-licensed songs from the Jamendo API for use with MusicRecognition.
-
-  Jamendo is a platform for independent musicians who release music under
-  Creative Commons licenses. The API is free to use with a client ID.
+  Downloads CC-licensed songs from the Jamendo API.
 
   ## Usage
 
-      # Download 100 songs (default) into songs/ directory
       mix music.download
-
-      # Download a specific number of songs
       mix music.download --count 50
-
-      # Download into a custom directory
       mix music.download --dir /path/to/songs
-
-      # Download specific genres (comma-separated)
       mix music.download --tags rock,pop,jazz
-
-      # Use a custom Jamendo client ID
       mix music.download --client-id your_client_id
 
-  ## Notes
-
-  - Songs are downloaded as MP3 files at 96kbps (Jamendo's free streaming quality)
-  - Each song is named as `artist - title.mp3`
-  - A `songs.json` manifest is saved alongside the files with metadata
-  - Downloads are resumable: existing files are skipped
-  - Default client ID is a demo key; for heavy use, register at https://devportal.jamendo.com/
+  Songs are downloaded as MP3 with `artist - title.mp3` naming.
+  A `songs.json` manifest is saved alongside the files. Downloads
+  are resumable: existing files are skipped.
   """
 
   use Mix.Task
 
   @shortdoc "Downloads CC-licensed songs from Jamendo for music recognition"
 
-  # Public demo client ID for Jamendo API (rate-limited but functional).
-  # For heavy use, register your own at https://devportal.jamendo.com/
-  @default_client_id "709fa152"
   @api_base "https://api.jamendo.com/v3.0"
-  @default_dir "songs"
-  @default_count 100
-  @tracks_per_page 20
+  @default_client_id "709fa152"
+  @per_page 20
 
-  # Popular tags to cycle through for variety
-  @default_tags [
-    "pop", "rock", "electronic", "hiphop", "jazz",
-    "classical", "ambient", "folk", "blues", "reggae",
-    "metal", "rnb", "latin", "country", "funk",
-    "soul", "indie", "punk", "dance", "world"
-  ]
+  @default_tags ~w(
+    pop rock electronic hiphop jazz classical ambient folk blues reggae
+    metal rnb latin country funk soul indie punk dance world
+  )
 
   @impl Mix.Task
   def run(args) do
     Mix.Task.run("app.start")
 
     {opts, _, _} =
-      OptionParser.parse(args,
-        strict: [
-          count: :integer,
-          dir: :string,
-          tags: :string,
-          client_id: :string
-        ]
-      )
+      OptionParser.parse(args, strict: [count: :integer, dir: :string, tags: :string, client_id: :string])
 
-    count = Keyword.get(opts, :count, @default_count)
-    dir = Keyword.get(opts, :dir, @default_dir)
-    client_id = Keyword.get(opts, :client_id, @default_client_id)
-
-    tags =
-      case Keyword.get(opts, :tags) do
-        nil -> @default_tags
-        tag_string -> String.split(tag_string, ",") |> Enum.map(&String.trim/1)
-      end
+    count = opts[:count] || 100
+    dir = opts[:dir] || "songs"
+    client_id = opts[:client_id] || @default_client_id
+    tags = if opts[:tags], do: opts[:tags] |> String.split(",") |> Enum.map(&String.trim/1), else: @default_tags
 
     File.mkdir_p!(dir)
 
@@ -88,53 +53,22 @@ defmodule Mix.Tasks.Music.Download do
     Tags:       #{Enum.join(tags, ", ")}
     """)
 
-    # Check for existing downloads
-    existing = count_existing(dir)
+    existing = dir |> File.ls!() |> Enum.count(&String.ends_with?(&1, ".mp3"))
+    if existing > 0, do: Mix.shell().info("Found #{existing} existing songs, will skip those.\n")
 
-    if existing > 0 do
-      Mix.shell().info("Found #{existing} existing songs, will skip those.\n")
-    end
-
-    # Fetch track metadata from Jamendo API
     Mix.shell().info("Fetching track list from Jamendo API...\n")
-
     tracks = fetch_tracks(client_id, tags, count)
 
     if tracks == [] do
-      Mix.shell().error("Failed to fetch any tracks from Jamendo. Check your internet connection.")
+      Mix.shell().error("Failed to fetch any tracks. Check your internet connection.")
       exit({:shutdown, 1})
     end
 
     Mix.shell().info("Found #{length(tracks)} tracks. Starting downloads...\n")
 
-    # Download each track
-    {downloaded, skipped, errors} =
-      tracks
-      |> Enum.with_index(1)
-      |> Enum.reduce({0, 0, 0}, fn {track, idx}, {dl, sk, err} ->
-        filename = sanitize_filename(track.artist, track.title)
-        filepath = Path.join(dir, filename)
+    {downloaded, skipped, errors} = download_all(tracks, dir)
 
-        if File.exists?(filepath) do
-          Mix.shell().info("  [#{idx}/#{length(tracks)}] SKIP #{filename} (exists)")
-          {dl, sk + 1, err}
-        else
-          Mix.shell().info("  [#{idx}/#{length(tracks)}] Downloading #{filename}...")
-
-          case download_file(track.audio_url, filepath) do
-            :ok ->
-              {dl + 1, sk, err}
-
-            {:error, reason} ->
-              Mix.shell().error("    ERROR: #{inspect(reason)}")
-              {dl, sk, err + 1}
-          end
-        end
-      end)
-
-    # Save manifest
-    manifest_path = Path.join(dir, "songs.json")
-    save_manifest(tracks, manifest_path)
+    save_manifest(tracks, Path.join(dir, "songs.json"))
 
     Mix.shell().info("""
 
@@ -144,7 +78,6 @@ defmodule Mix.Tasks.Music.Download do
     Skipped:    #{skipped}
     Errors:     #{errors}
     Total:      #{downloaded + skipped} songs in #{dir}/
-    Manifest:   #{manifest_path}
     ════════════════════════════════════════════
 
     Next steps:
@@ -154,27 +87,24 @@ defmodule Mix.Tasks.Music.Download do
     """)
   end
 
+  # --- Fetching ---
+
   defp fetch_tracks(client_id, tags, count) do
-    # Distribute requests across tags for variety
-    tracks_per_tag = max(1, div(count, length(tags)) + 1)
+    per_tag = max(1, div(count, length(tags)) + 1)
 
     tracks =
       tags
-      |> Enum.flat_map(fn tag ->
-        fetch_tag_tracks(client_id, tag, tracks_per_tag)
-      end)
+      |> Enum.flat_map(&fetch_page(client_id, %{"tags" => &1}, per_tag))
       |> Enum.uniq_by(& &1.id)
       |> Enum.take(count)
 
-    # If we didn't get enough from tags, do a popularity-based fetch
     if length(tracks) < count do
-      remaining = count - length(tracks)
       existing_ids = MapSet.new(tracks, & &1.id)
 
       extras =
-        fetch_popular_tracks(client_id, remaining + 20)
-        |> Enum.reject(fn t -> MapSet.member?(existing_ids, t.id) end)
-        |> Enum.take(remaining)
+        fetch_page(client_id, %{}, count - length(tracks) + 20)
+        |> Enum.reject(&MapSet.member?(existing_ids, &1.id))
+        |> Enum.take(count - length(tracks))
 
       tracks ++ extras
     else
@@ -182,61 +112,36 @@ defmodule Mix.Tasks.Music.Download do
     end
   end
 
-  defp fetch_tag_tracks(client_id, tag, count) do
-    pages = div(count - 1, @tracks_per_page) + 1
+  defp fetch_page(client_id, extra_params, count) do
+    pages = div(count - 1, @per_page) + 1
 
     Enum.flat_map(1..pages, fn page ->
-      offset = (page - 1) * @tracks_per_page
-      limit = min(@tracks_per_page, count - offset)
+      offset = (page - 1) * @per_page
 
-      url =
-        "#{@api_base}/tracks/?" <>
-          URI.encode_query(%{
+      params =
+        Map.merge(
+          %{
             "client_id" => client_id,
             "format" => "json",
-            "limit" => limit,
+            "limit" => min(@per_page, count - offset),
             "offset" => offset,
-            "tags" => tag,
             "order" => "popularity_total",
             "audioformat" => "mp3",
             "include" => "musicinfo+licenses"
-          })
+          },
+          extra_params
+        )
 
-      case http_get_json(url) do
-        {:ok, %{"results" => results}} ->
+      case Req.get("#{@api_base}/tracks/?#{URI.encode_query(params)}", retry: :transient, max_retries: 3) do
+        {:ok, %{status: 200, body: %{"results" => results}}} ->
           Enum.map(results, &parse_track/1)
+
+        {:ok, %{status: status}} ->
+          Mix.shell().error("  Warning: API returned #{status} for #{inspect(extra_params)}")
+          []
 
         {:error, reason} ->
-          Mix.shell().error("  Warning: Failed to fetch #{tag} tracks (page #{page}): #{inspect(reason)}")
-          []
-      end
-    end)
-    |> Enum.take(count)
-  end
-
-  defp fetch_popular_tracks(client_id, count) do
-    pages = div(count - 1, @tracks_per_page) + 1
-
-    Enum.flat_map(1..pages, fn page ->
-      offset = (page - 1) * @tracks_per_page
-      limit = min(@tracks_per_page, count - offset)
-
-      url =
-        "#{@api_base}/tracks/?" <>
-          URI.encode_query(%{
-            "client_id" => client_id,
-            "format" => "json",
-            "limit" => limit,
-            "offset" => offset,
-            "order" => "popularity_total",
-            "audioformat" => "mp3"
-          })
-
-      case http_get_json(url) do
-        {:ok, %{"results" => results}} ->
-          Enum.map(results, &parse_track/1)
-
-        _ ->
+          Mix.shell().error("  Warning: #{inspect(reason)}")
           []
       end
     end)
@@ -244,13 +149,10 @@ defmodule Mix.Tasks.Music.Download do
   end
 
   defp parse_track(track) do
-    # Prefer audiodownload (higher quality) over audio (low bitrate stream)
     audio_url =
-      if track["audiodownload_allowed"] do
-        track["audiodownload"] || track["audio"]
-      else
-        track["audio"]
-      end
+      if track["audiodownload_allowed"],
+        do: track["audiodownload"] || track["audio"],
+        else: track["audio"]
 
     %{
       id: track["id"],
@@ -264,25 +166,39 @@ defmodule Mix.Tasks.Music.Download do
     }
   end
 
-  defp http_get_json(url) do
-    case Req.get(url, retry: :transient, max_retries: 3) do
-      {:ok, %Req.Response{status: 200, body: body}} when is_map(body) ->
-        {:ok, body}
+  # --- Downloading ---
 
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error, {:http_status, status, body}}
+  defp download_all(tracks, dir) do
+    total = length(tracks)
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    tracks
+    |> Enum.with_index(1)
+    |> Enum.reduce({0, 0, 0}, fn {track, idx}, {dl, sk, err} ->
+      filename = sanitize_filename(track.artist, track.title)
+      filepath = Path.join(dir, filename)
+
+      if File.exists?(filepath) do
+        Mix.shell().info("  [#{idx}/#{total}] SKIP #{filename} (exists)")
+        {dl, sk + 1, err}
+      else
+        Mix.shell().info("  [#{idx}/#{total}] Downloading #{filename}...")
+
+        case download_file(track.audio_url, filepath) do
+          :ok -> {dl + 1, sk, err}
+          {:error, reason} ->
+            Mix.shell().error("    ERROR: #{inspect(reason)}")
+            {dl, sk, err + 1}
+        end
+      end
+    end)
   end
 
   defp download_file(url, filepath) do
     case Req.get(url, into: File.stream!(filepath), retry: :transient, max_retries: 3) do
-      {:ok, %Req.Response{status: 200}} ->
+      {:ok, %{status: 200}} ->
         :ok
 
-      {:ok, %Req.Response{status: status}} ->
+      {:ok, %{status: status}} ->
         File.rm(filepath)
         {:error, {:http_status, status}}
 
@@ -292,10 +208,10 @@ defmodule Mix.Tasks.Music.Download do
     end
   end
 
-  defp sanitize_filename(artist, title) do
-    name = "#{artist} - #{title}"
+  # --- Helpers ---
 
-    name
+  defp sanitize_filename(artist, title) do
+    "#{artist} - #{title}"
     |> String.replace(~r/[<>:"\/\\|?*]/, "_")
     |> String.replace(~r/\s+/, " ")
     |> String.trim()
@@ -303,17 +219,9 @@ defmodule Mix.Tasks.Music.Download do
     |> Kernel.<>(".mp3")
   end
 
-  defp count_existing(dir) do
-    case File.ls(dir) do
-      {:ok, files} -> Enum.count(files, &String.ends_with?(&1, ".mp3"))
-      _ -> 0
-    end
-  end
-
   defp save_manifest(tracks, path) do
     manifest =
-      tracks
-      |> Enum.map(fn t ->
+      Enum.map(tracks, fn t ->
         %{
           id: t.id,
           title: t.title,
@@ -325,7 +233,6 @@ defmodule Mix.Tasks.Music.Download do
         }
       end)
 
-    json = manifest |> Jason.encode!(pretty: true)
-    File.write!(path, json)
+    File.write!(path, Jason.encode!(manifest, pretty: true))
   end
 end

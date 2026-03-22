@@ -1,253 +1,216 @@
 defmodule MusicRecognition.Demo do
   @moduledoc """
   Interactive demo that picks a random song, takes a random 5-15s sample,
-  recognizes it, shows the matches with timestamps, and offers to play
-  the audio using ffplay.
+  recognizes it, and shows matches with timestamps and playback commands.
   """
 
-  alias MusicRecognition.{Audio, Spectrogram, Peaks, Fingerprint, Database, Matcher}
+  alias MusicRecognition.{Audio, Spectrogram}
 
   @doc """
   Runs a single demo iteration against a directory of audio files.
 
-  1. Picks a random song from the directory
-  2. Takes a random 5-15s sample
-  3. Recognizes it against the database
-  4. Prints all matches with the timestamp where the sample aligns in each song
-  5. Offers to play the sample and the matched song at the match point
-
   ## Options
 
-    * `:seed` - Random seed (default: based on system time)
+    * `:seed` - Random seed (default: system time)
     * `:min_duration` - Minimum sample duration in seconds (default: 5)
     * `:max_duration` - Maximum sample duration in seconds (default: 15)
   """
   def run(db, directory, opts \\ []) do
-    seed = Keyword.get(opts, :seed, System.system_time(:millisecond))
-    min_dur = Keyword.get(opts, :min_duration, 5)
-    max_dur = Keyword.get(opts, :max_duration, 15)
+    seed_rand(opts)
 
-    :rand.seed(:exsss, {seed, seed, seed})
-
-    extensions = ~w(.mp3 .wav .flac .ogg .m4a .aac .wma)
-
-    files =
-      directory
-      |> File.ls!()
-      |> Enum.filter(fn f -> Path.extname(f) |> String.downcase() in extensions end)
-      |> Enum.sort()
-
-    if files == [] do
-      IO.puts("No audio files found in #{directory}")
-      :error
-    else
-      # Pick a random song
-      source_file = Enum.random(files)
-      source_path = Path.join(directory, source_file)
-
-      run_with_file(db, directory, source_file, source_path, min_dur, max_dur)
-    end
-  end
-
-  @doc """
-  Runs a demo with a specific file as the source (instead of random).
-  Useful for testing a specific song.
-  """
-  def run_with(db, directory, source_file, opts \\ []) do
-    min_dur = Keyword.get(opts, :min_duration, 5)
-    max_dur = Keyword.get(opts, :max_duration, 15)
-    seed = Keyword.get(opts, :seed, System.system_time(:millisecond))
-
-    :rand.seed(:exsss, {seed, seed, seed})
-
-    source_path = Path.join(directory, source_file)
-
-    unless File.exists?(source_path) do
-      IO.puts("File not found: #{source_path}")
-      :error
-    else
-      run_with_file(db, directory, source_file, source_path, min_dur, max_dur)
-    end
-  end
-
-  defp run_with_file(db, directory, source_file, source_path, min_dur, max_dur) do
-    hop_size = Spectrogram.defaults().hop_size
-    sample_rate = Audio.sample_rate()
-
-    # Read the full file to determine duration
-    case Audio.read_file(source_path) do
-      {:ok, full_audio} ->
-        total_seconds = Nx.size(full_audio) / sample_rate
-
-        # Pick random duration and offset
-        duration = random_float(min_dur, min(max_dur, total_seconds))
-        max_offset = max(0.0, total_seconds - duration)
-        offset = if max_offset > 0, do: random_float(0.0, max_offset), else: 0.0
-
-        IO.puts("""
-
-        ╔══════════════════════════════════════════╗
-        ║          Music Recognition Demo          ║
-        ╚══════════════════════════════════════════╝
-
-        Source:   #{source_file}
-        Sample:   #{format_time(offset)} - #{format_time(offset + duration)} (#{Float.round(duration, 1)}s)
-        Song len: #{format_time(total_seconds)}
-        """)
-
-        # Read the sample
-        case Audio.read_file(source_path, offset: offset, duration: duration) do
-          {:ok, _sample_audio} ->
-            IO.puts("Recognizing...\n")
-
-            {:ok, results} = Matcher.recognize_file(db, source_path, offset: offset, duration: duration)
-
-            if results == [] do
-              IO.puts("No matches found.")
-            else
-              IO.puts("── Matches ──\n")
-              IO.puts(String.pad_trailing("  #", 4) <>
-                      String.pad_trailing("Song", 35) <>
-                      String.pad_trailing("Score", 8) <>
-                      String.pad_trailing("Prob", 8) <>
-                      "Match Timestamp")
-              IO.puts("  " <> String.duplicate("─", 75))
-
-              Enum.with_index(results, 1)
-              |> Enum.each(fn {match, idx} ->
-                match_seconds = frame_to_seconds(match.match_offset, hop_size, sample_rate)
-                is_correct = match.song_id == source_file
-                marker = if is_correct, do: "*", else: " "
-
-                IO.puts(
-                  "  #{marker}#{idx}" <>
-                  " " <> String.pad_trailing(truncate(match.song_id, 33), 35) <>
-                  String.pad_trailing("#{match.score}", 8) <>
-                  String.pad_trailing("#{Float.round(match.probability * 100, 1)}%", 8) <>
-                  format_time(match_seconds)
-                )
-              end)
-
-              IO.puts("\n  * = source song\n")
-
-              # Build playback commands
-              best = hd(results)
-              best_match_seconds = frame_to_seconds(best.match_offset, hop_size, sample_rate)
-              best_path = Path.join(directory, best.song_id)
-
-              IO.puts("── Playback Commands ──\n")
-              IO.puts("  Play the sample:")
-              IO.puts("    ffplay -nodisp -autoexit -ss #{Float.round(offset, 1)} -t #{Float.round(duration, 1)} \"#{source_path}\"\n")
-
-              IO.puts("  Play the best match at matched timestamp:")
-              IO.puts("    ffplay -nodisp -autoexit -ss #{Float.round(best_match_seconds, 1)} -t #{Float.round(duration, 1)} \"#{best_path}\"\n")
-
-              # Return structured result for programmatic use
-              %{
-                source: %{
-                  file: source_file,
-                  path: source_path,
-                  offset: offset,
-                  duration: duration
-                },
-                matches: Enum.map(results, fn match ->
-                  Map.put(match, :match_seconds, frame_to_seconds(match.match_offset, hop_size, sample_rate))
-                end),
-                play: %{
-                  sample: build_play_cmd(source_path, offset, duration),
-                  match: build_play_cmd(best_path, best_match_seconds, duration)
-                }
-              }
-            end
-
-          {:error, reason} ->
-            IO.puts("Failed to read sample: #{inspect(reason)}")
-            :error
-        end
-
-      {:error, reason} ->
-        IO.puts("Failed to read #{source_file}: #{inspect(reason)}")
+    case MusicRecognition.list_audio_files(directory) do
+      [] ->
+        IO.puts("No audio files found in #{directory}")
         :error
+
+      files ->
+        file = Enum.random(files)
+        run_file(db, directory, file, opts)
     end
   end
 
   @doc """
-  Plays audio using ffplay. Requires ffmpeg/ffplay to be installed.
+  Runs a demo with a specific file as the source.
+  """
+  def run_with(db, directory, file, opts \\ []) do
+    seed_rand(opts)
+    path = Path.join(directory, file)
+
+    if File.exists?(path) do
+      run_file(db, directory, file, opts)
+    else
+      IO.puts("File not found: #{path}")
+      :error
+    end
+  end
+
+  @doc """
+  Plays audio using ffplay.
 
   ## Options
 
     * `:offset` - Start at this many seconds (default: 0)
-    * `:duration` - Play for this many seconds (default: nil = play to end)
+    * `:duration` - Play for this many seconds (default: entire file)
   """
   def play(file_path, opts \\ []) do
-    offset = Keyword.get(opts, :offset, 0)
-    duration = Keyword.get(opts, :duration, nil)
-
-    cmd = build_play_cmd(file_path, offset, duration)
-    IO.puts("Playing: #{Path.basename(file_path)} at #{format_time(offset)}...")
-
-    [program | args] = String.split(cmd)
-    System.cmd(program, args, into: IO.stream(:stdio, :line))
-    :ok
+    IO.puts("Playing: #{Path.basename(file_path)} at #{format_time(opts[:offset] || 0)}...")
+    run_ffplay(build_ffplay_args(file_path, opts[:offset] || 0, opts[:duration]))
   end
 
-  @doc """
-  Plays the sample from a demo result.
-  """
-  def play_sample(%{play: %{sample: cmd}}) do
+  @doc "Plays the sample clip from a demo result."
+  def play_sample(%{source: source}) do
     IO.puts("Playing sample...")
-    [program | args] = String.split(cmd)
-    System.cmd(program, args, into: IO.stream(:stdio, :line))
-    :ok
+    run_ffplay(build_ffplay_args(source.path, source.offset, source.duration))
   end
 
-  @doc """
-  Plays the matched song at the matched timestamp from a demo result.
-  """
-  def play_match(%{play: %{match: cmd}}) do
+  @doc "Plays the matched song at the matched timestamp from a demo result."
+  def play_match(%{best_match: match, source: source}) do
     IO.puts("Playing match...")
-    [program | args] = String.split(cmd)
-    System.cmd(program, args, into: IO.stream(:stdio, :line))
-    :ok
+    run_ffplay(build_ffplay_args(match.path, match.match_seconds, source.duration))
   end
 
-  # --- Private helpers ---
+  # --- Core ---
 
-  defp frame_to_seconds(frame_offset, hop_size, sample_rate) do
-    # frame_offset can be negative (sample starts after song beginning)
-    # or positive (sample aligns partway through the song)
-    max(0.0, frame_offset * hop_size / sample_rate)
-  end
+  defp run_file(db, directory, file, opts) do
+    min_dur = Keyword.get(opts, :min_duration, 5)
+    max_dur = Keyword.get(opts, :max_duration, 15)
+    path = Path.join(directory, file)
 
-  defp format_time(seconds) when is_float(seconds) do
-    format_time(round(seconds * 10) / 10)
-  end
+    with {:ok, audio} <- Audio.read_file(path) do
+      total_seconds = Nx.size(audio) / Audio.sample_rate()
+      duration = random_float(min_dur, min(max_dur, total_seconds))
+      offset = random_offset(total_seconds, duration)
 
-  defp format_time(seconds) do
-    total = trunc(seconds)
-    mins = div(total, 60)
-    secs = rem(total, 60)
-    frac = Float.round(seconds - total, 1)
-    fractional = if frac > 0, do: String.slice("#{frac}", 1..-1//1), else: ".0"
-    "#{mins}:#{String.pad_leading("#{secs}", 2, "0")}#{fractional}"
-  end
+      print_header(file, offset, duration, total_seconds)
 
-  defp truncate(string, max_len) do
-    if String.length(string) > max_len do
-      String.slice(string, 0, max_len - 2) <> ".."
+      {:ok, results} = MusicRecognition.recognize(db, path, offset: offset, duration: duration)
+
+      if results == [] do
+        IO.puts("No matches found.")
+        :no_match
+      else
+        print_matches(results, file, directory)
+        print_playback_commands(path, offset, duration, hd(results), directory)
+        build_demo_result(file, path, offset, duration, results, directory)
+      end
     else
-      string
+      {:error, reason} ->
+        IO.puts("Failed to read #{file}: #{inspect(reason)}")
+        :error
     end
   end
 
-  defp build_play_cmd(path, offset, nil) do
-    "ffplay -nodisp -autoexit -ss #{Float.round(offset / 1, 1)} \"#{path}\""
+  # --- Output ---
+
+  defp print_header(file, offset, duration, total) do
+    IO.puts("""
+
+    ╔══════════════════════════════════════════╗
+    ║          Music Recognition Demo          ║
+    ╚══════════════════════════════════════════╝
+
+    Source:   #{file}
+    Sample:   #{format_time(offset)} - #{format_time(offset + duration)} (#{Float.round(duration, 1)}s)
+    Song len: #{format_time(total)}
+    """)
+    IO.puts("Recognizing...\n")
   end
 
-  defp build_play_cmd(path, offset, duration) do
-    "ffplay -nodisp -autoexit -ss #{Float.round(offset / 1, 1)} -t #{Float.round(duration / 1, 1)} \"#{path}\""
+  defp print_matches(results, source_file, directory) do
+    hop = Spectrogram.defaults().hop_size
+    sr = Audio.sample_rate()
+
+    IO.puts("── Matches ──\n")
+    IO.puts(pad("  #", 4) <> pad("Song", 35) <> pad("Score", 8) <> pad("Prob", 8) <> "Match Timestamp")
+    IO.puts("  " <> String.duplicate("─", 75))
+
+    results
+    |> Enum.with_index(1)
+    |> Enum.each(fn {match, idx} ->
+      seconds = frame_to_seconds(match.match_offset, hop, sr)
+      marker = if match.song_id == source_file, do: "*", else: " "
+
+      IO.puts(
+        "  #{marker}#{idx} " <>
+          pad(truncate(match.song_id, 33), 35) <>
+          pad("#{match.score}", 8) <>
+          pad("#{Float.round(match.probability * 100, 1)}%", 8) <>
+          format_time(seconds)
+      )
+    end)
+
+    IO.puts("\n  * = source song\n")
+  end
+
+  defp print_playback_commands(source_path, offset, duration, best, directory) do
+    best_seconds = frame_to_seconds(best.match_offset, Spectrogram.defaults().hop_size, Audio.sample_rate())
+    best_path = Path.join(directory, best.song_id)
+
+    IO.puts("── Playback Commands ──\n")
+    IO.puts("  Play the sample:")
+    IO.puts("    ffplay -nodisp -autoexit -ss #{Float.round(offset, 1)} -t #{Float.round(duration, 1)} \"#{source_path}\"\n")
+    IO.puts("  Play the best match at matched timestamp:")
+    IO.puts("    ffplay -nodisp -autoexit -ss #{Float.round(best_seconds, 1)} -t #{Float.round(duration, 1)} \"#{best_path}\"\n")
+  end
+
+  defp build_demo_result(file, path, offset, duration, results, directory) do
+    hop = Spectrogram.defaults().hop_size
+    sr = Audio.sample_rate()
+    best = hd(results)
+    best_seconds = frame_to_seconds(best.match_offset, hop, sr)
+
+    %{
+      source: %{file: file, path: path, offset: offset, duration: duration},
+      matches: Enum.map(results, &Map.put(&1, :match_seconds, frame_to_seconds(&1.match_offset, hop, sr))),
+      best_match: %{
+        song_id: best.song_id,
+        path: Path.join(directory, best.song_id),
+        match_seconds: best_seconds
+      }
+    }
+  end
+
+  # --- Helpers ---
+
+  defp seed_rand(opts) do
+    seed = Keyword.get(opts, :seed, System.system_time(:millisecond))
+    :rand.seed(:exsss, {seed, seed, seed})
+  end
+
+  defp random_offset(total, duration) do
+    max_offset = max(0.0, total - duration)
+    if max_offset > 0, do: random_float(0.0, max_offset), else: 0.0
   end
 
   defp random_float(min, max) when max <= min, do: min
   defp random_float(min, max), do: min + :rand.uniform() * (max - min)
+
+  defp frame_to_seconds(offset, hop, sr), do: max(0.0, offset * hop / sr)
+
+  defp format_time(seconds) do
+    total = trunc(seconds)
+    frac = seconds - total
+    "#{div(total, 60)}:#{total |> rem(60) |> Integer.to_string() |> String.pad_leading(2, "0")}.#{trunc(frac * 10)}"
+  end
+
+  defp truncate(string, max_len) when byte_size(string) > max_len do
+    String.slice(string, 0, max_len - 2) <> ".."
+  end
+
+  defp truncate(string, _), do: string
+
+  defp pad(string, width), do: String.pad_trailing(string, width)
+
+  defp build_ffplay_args(path, offset, nil) do
+    ["-nodisp", "-autoexit", "-ss", "#{Float.round(offset / 1, 1)}", path]
+  end
+
+  defp build_ffplay_args(path, offset, duration) do
+    ["-nodisp", "-autoexit", "-ss", "#{Float.round(offset / 1, 1)}", "-t", "#{Float.round(duration / 1, 1)}", path]
+  end
+
+  defp run_ffplay(args) do
+    System.cmd("ffplay", args, into: IO.stream(:stdio, :line))
+    :ok
+  end
 end
