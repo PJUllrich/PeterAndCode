@@ -90,25 +90,26 @@ defmodule MusicRecognition.Database do
           matches
           |> DF.group_by(["song_id", "time_diff"])
           |> DF.summarise(count: count(hash))
-          |> DF.discard("time_diff")
 
-        # For each song, take the maximum count across all time alignments
-        results =
+        # For each song, find the time_diff with the highest count
+        # We sort by count descending, then take the first row per song
+        best_per_song =
           grouped
-          |> DF.group_by("song_id")
-          |> DF.summarise(score: max(count))
-          |> DF.sort_by(desc: score)
+          |> DF.sort_by(desc: count)
+          |> DF.distinct(["song_id"], keep_all: true)
+          |> DF.sort_by(desc: count)
 
-        rows = DF.to_rows(results)
-        total_score = Enum.sum(Enum.map(rows, & &1["score"]))
+        rows = DF.to_rows(best_per_song)
+        total_score = Enum.sum(Enum.map(rows, & &1["count"]))
 
         rows
         |> Enum.map(fn row ->
           %{
             song_id: row["song_id"],
-            score: row["score"],
-            confidence: row["score"] / total_query,
-            probability: if(total_score > 0, do: row["score"] / total_score, else: 0.0)
+            score: row["count"],
+            confidence: row["count"] / total_query,
+            probability: if(total_score > 0, do: row["count"] / total_score, else: 0.0),
+            match_offset: row["time_diff"]
           }
         end)
       end

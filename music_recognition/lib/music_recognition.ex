@@ -35,7 +35,7 @@ defmodule MusicRecognition do
       db = MusicRecognition.load_database("fingerprints.parquet")
   """
 
-  alias MusicRecognition.{Audio, Spectrogram, Peaks, Fingerprint, Database, Matcher}
+  alias MusicRecognition.{Audio, Spectrogram, Peaks, Fingerprint, Database, Matcher, Demo}
 
   @doc """
   Builds a fingerprint database from all audio files in a directory.
@@ -244,4 +244,36 @@ defmodule MusicRecognition do
   def evaluate_directory(db, directory, opts \\ []) do
     Evaluation.evaluate_directory(db, directory, opts) |> Evaluation.print_report()
   end
+
+  @doc """
+  Runs a single interactive demo: picks a random song, takes a random 5-15s
+  sample, recognizes it, shows all matches with timestamps, and prints
+  playback commands.
+
+  Returns a result map that can be passed to `play_sample/1` and `play_match/1`.
+
+  ## Example
+
+      {db, _} = MusicRecognition.build_database("/path/to/songs/")
+      result = MusicRecognition.demo(db, "/path/to/songs/")
+
+      # Play the sample clip
+      MusicRecognition.play_sample(result)
+
+      # Play the best match at the matched timestamp
+      MusicRecognition.play_match(result)
+  """
+  def demo(db, directory, opts \\ []) do
+    Demo.run(db, directory, opts)
+  end
+
+  @doc """
+  Plays the sample clip from a demo result.
+  """
+  def play_sample(demo_result), do: Demo.play_sample(demo_result)
+
+  @doc """
+  Plays the best-matched song at the matched timestamp from a demo result.
+  """
+  def play_match(demo_result), do: Demo.play_match(demo_result)
 end
