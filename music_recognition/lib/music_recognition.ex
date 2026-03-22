@@ -205,4 +205,43 @@ defmodule MusicRecognition do
 
     IO.puts("\nSelf-test complete!")
   end
+
+  @doc """
+  Runs a full evaluation with synthetic songs and prints a report.
+
+  Generates synthetic songs, builds a database, then tests recognition
+  with random 5-15s samples. Prints a detailed accuracy report.
+
+  ## Options
+
+    * `:num_songs` - Number of synthetic songs (default: 10)
+    * `:samples_per_song` - Random samples per song (default: 5)
+    * `:noise_level` - Noise to add to samples, 0.0-1.0 (default: 0.0)
+    * `:seed` - Random seed for reproducibility (default: 42)
+
+  ## Example
+
+      # Basic evaluation
+      MusicRecognition.evaluate()
+
+      # Stress test with noise
+      MusicRecognition.evaluate(num_songs: 20, noise_level: 0.05)
+  """
+  def evaluate(opts \\ []) do
+    Evaluation.evaluate_synthetic(opts) |> Evaluation.print_report()
+  end
+
+  @doc """
+  Evaluates recognition accuracy against a directory of real audio files.
+
+  Requires a pre-built database and the original audio directory.
+
+  ## Example
+
+      {db, _} = MusicRecognition.build_database("/path/to/songs/")
+      MusicRecognition.evaluate_directory(db, "/path/to/songs/", samples_per_song: 5)
+  """
+  def evaluate_directory(db, directory, opts \\ []) do
+    Evaluation.evaluate_directory(db, directory, opts) |> Evaluation.print_report()
+  end
 end

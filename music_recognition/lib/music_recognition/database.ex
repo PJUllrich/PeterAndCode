@@ -99,13 +99,16 @@ defmodule MusicRecognition.Database do
           |> DF.summarise(score: max(count))
           |> DF.sort_by(desc: score)
 
-        results
-        |> DF.to_rows()
+        rows = DF.to_rows(results)
+        total_score = Enum.sum(Enum.map(rows, & &1["score"]))
+
+        rows
         |> Enum.map(fn row ->
           %{
             song_id: row["song_id"],
             score: row["score"],
-            confidence: row["score"] / total_query
+            confidence: row["score"] / total_query,
+            probability: if(total_score > 0, do: row["score"] / total_score, else: 0.0)
           }
         end)
       end

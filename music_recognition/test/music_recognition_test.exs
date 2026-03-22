@@ -128,6 +128,49 @@ defmodule MusicRecognitionTest do
       assert hd(results).song_id == "my_song"
       assert hd(results).score == 3
     end
+
+    test "query returns probability distribution across matched songs" do
+      db = Database.new()
+
+      # Song A has hashes 100, 200, 300
+      db = Database.insert(db, "song_a", [
+        %{hash: 100, time_offset: 0},
+        %{hash: 200, time_offset: 5},
+        %{hash: 300, time_offset: 10}
+      ])
+
+      # Song B shares hash 100 with song A
+      db = Database.insert(db, "song_b", [
+        %{hash: 100, time_offset: 0},
+        %{hash: 400, time_offset: 5},
+        %{hash: 500, time_offset: 10}
+      ])
+
+      # Query with song A's fingerprints — should match A strongly, B weakly
+      query = [
+        %{hash: 100, time_offset: 0},
+        %{hash: 200, time_offset: 5},
+        %{hash: 300, time_offset: 10}
+      ]
+
+      results = Database.query(db, query)
+
+      assert length(results) == 2
+
+      song_a_result = Enum.find(results, &(&1.song_id == "song_a"))
+      song_b_result = Enum.find(results, &(&1.song_id == "song_b"))
+
+      # Both must have probability field
+      assert Map.has_key?(song_a_result, :probability)
+      assert Map.has_key?(song_b_result, :probability)
+
+      # Probabilities must sum to ~1.0
+      total_prob = song_a_result.probability + song_b_result.probability
+      assert_in_delta total_prob, 1.0, 0.01
+
+      # Song A should have higher probability
+      assert song_a_result.probability > song_b_result.probability
+    end
   end
 
   describe "end-to-end recognition with synthetic tones" do
@@ -158,6 +201,91 @@ defmodule MusicRecognitionTest do
         assert best.song_id == name, "Expected #{name}, got #{best.song_id}"
         assert best.confidence > 0.1, "Confidence too low for #{name}: #{best.confidence}"
       end)
+    end
+  end
+
+  describe "Evaluation" do
+    alias MusicRecognition.Evaluation
+
+    test "synthetic evaluation runs and returns result struct" do
+      result = Evaluation.evaluate_synthetic(
+        num_songs: 3,
+        song_duration: 15,
+        samples_per_song: 2,
+        min_duration: 5,
+        max_duration: 8,
+        seed: 123
+      )
+
+      assert is_map(result)
+      assert Map.has_key?(result, :total)
+      assert Map.has_key?(result, :correct)
+      assert Map.has_key?(result, :accuracy)
+      assert Map.has_key?(result, :per_song)
+      assert Map.has_key?(result, :misses)
+      assert Map.has_key?(result, :ambiguous)
+      assert Map.has_key?(result, :trials)
+
+      # 3 songs x 2 samples = 6 trials
+      assert result.total == 6
+      assert result.accuracy >= 0.0 and result.accuracy <= 1.0
+      assert length(result.per_song) == 3
+
+      # Each per_song entry has the right fields
+      {_name, stats} = hd(result.per_song)
+      assert Map.has_key?(stats, :correct)
+      assert Map.has_key?(stats, :total)
+      assert Map.has_key?(stats, :accuracy)
+    end
+
+    test "synthetic evaluation achieves reasonable accuracy with distinct tones" do
+      result = Evaluation.evaluate_synthetic(
+        num_songs: 5,
+        song_duration: 20,
+        samples_per_song: 3,
+        min_duration: 5,
+        max_duration: 10,
+        seed: 42
+      )
+
+      # With synthetic tones (stationary signals), we expect high accuracy
+      assert result.accuracy >= 0.5,
+        "Expected at least 50% accuracy, got #{Float.round(result.accuracy * 100, 1)}%"
+    end
+
+    test "evaluation results include probability in trial results" do
+      result = Evaluation.evaluate_synthetic(
+        num_songs: 3,
+        song_duration: 15,
+        samples_per_song: 1,
+        seed: 99
+      )
+
+      # Check that results in trials have probability
+      Enum.each(result.trials, fn trial ->
+        if trial.results != [] do
+          Enum.each(trial.results, fn match ->
+            assert Map.has_key?(match, :probability)
+            assert match.probability >= 0.0 and match.probability <= 1.0
+          end)
+
+          # Probabilities should sum to ~1.0
+          total = Enum.sum(Enum.map(trial.results, & &1.probability))
+          assert_in_delta total, 1.0, 0.01
+        end
+      end)
+    end
+
+    test "print_report returns the result unchanged" do
+      result = Evaluation.evaluate_synthetic(
+        num_songs: 2,
+        song_duration: 10,
+        samples_per_song: 1,
+        seed: 7
+      )
+
+      returned = Evaluation.print_report(result)
+      assert returned == result
     end
   end
 end
