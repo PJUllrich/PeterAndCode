@@ -35,8 +35,9 @@ defmodule Mix.Tasks.Music.Download do
 
   @shortdoc "Downloads CC-licensed songs from Jamendo for music recognition"
 
-  # Public demo client ID for Jamendo API (rate-limited but functional)
-  @default_client_id "b6747d04"
+  # Public demo client ID for Jamendo API (rate-limited but functional).
+  # For heavy use, register your own at https://devportal.jamendo.com/
+  @default_client_id "709fa152"
   @api_base "https://api.jamendo.com/v3.0"
   @default_dir "songs"
   @default_count 100
@@ -243,11 +244,19 @@ defmodule Mix.Tasks.Music.Download do
   end
 
   defp parse_track(track) do
+    # Prefer audiodownload (higher quality) over audio (low bitrate stream)
+    audio_url =
+      if track["audiodownload_allowed"] do
+        track["audiodownload"] || track["audio"]
+      else
+        track["audio"]
+      end
+
     %{
       id: track["id"],
       title: track["name"] || "Unknown",
       artist: track["artist_name"] || "Unknown",
-      audio_url: track["audio"],
+      audio_url: audio_url,
       duration: track["duration"],
       license: track["license_ccurl"] || "CC",
       album: track["album_name"],
