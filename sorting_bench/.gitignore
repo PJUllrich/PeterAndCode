@@ -27,9 +27,11 @@ sorting_bench-*.tar
 
 # Rust build artifacts (Rustler builds into _build, but cargo also creates target/)
 /native/sorting_nif/target/
+/rust_bench/target/
 
-# C Node compiled binary
+# C Node and C bench compiled binaries
 /c_node/sort_node
+/c_bench/bench_sort
 
 # Shared memory file
 /dev/shm/sorting_bench_mmap

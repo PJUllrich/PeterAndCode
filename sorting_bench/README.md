@@ -21,8 +21,9 @@ focusing on **copy costs** and **sorting speed**.
 ## Prerequisites
 
 - Elixir >= 1.14
-- Rust (for building the NIF)
-- GCC + Erlang dev headers (for the C Node)
+- Rust (for building the NIF and standalone benchmark)
+- GCC/G++ + Erlang dev headers (for the C Node)
+- Google Benchmark (`libbenchmark-dev`) for the standalone C benchmark
 
 ## Setup
 
@@ -35,9 +36,15 @@ make -C c_node
 
 # Compile everything (this also builds the Rust NIF via Rustler)
 mix compile
+
+# Build standalone native benchmarks
+make -C c_bench
+cd rust_bench && cargo bench --no-run && cd ..
 ```
 
-## Running the Benchmark
+## Running the Benchmarks
+
+### Elixir (Benchee) — all approaches compared
 
 ```bash
 # Without C Node (simplest)
@@ -46,6 +53,25 @@ mix run bench/run.exs
 # With C Node (requires BEAM distribution)
 elixir --sname bench --cookie sorting_bench -S mix run bench/run.exs
 ```
+
+### Standalone Rust (Criterion)
+
+```bash
+cd rust_bench && cargo bench
+```
+
+Measures pure Rust `sort_unstable` with no BEAM involvement:
+generate+sort, sort-only, pre-sorted, and reverse-sorted inputs.
+Results are saved to `rust_bench/target/criterion/` with HTML reports.
+
+### Standalone C (Google Benchmark)
+
+```bash
+./c_bench/bench_sort
+```
+
+Measures pure C `qsort` with no BEAM involvement.
+Same scenarios as the Rust benchmark for direct comparison.
 
 ## How It Works
 
