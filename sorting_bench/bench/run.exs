@@ -56,6 +56,19 @@ c_node_info =
     nil
   end
 
+# -- Setup Port sort (optional — requires built binary) -----------------------
+port_sort_info =
+  try do
+    port = SortingBench.PortSort.start()
+    IO.puts("Port sort process started.\n")
+    port
+  rescue
+    e ->
+      IO.puts("Port sort setup failed: #{Exception.message(e)}")
+      IO.puts("Skipping Port sort benchmark.\n")
+      nil
+  end
+
 # -- Build benchmark scenarios ------------------------------------------------
 scenarios = %{
   # === Baselines ===
@@ -104,7 +117,12 @@ scenarios = %{
   # === Elixir-instructed: data lives in Rust, Elixir just says "go" ===
   "00. Rust NIF (Elixir-instructed sort — measures NIF call overhead)" =>
     {fn input -> RustNif.trigger_sort(input) end,
-     before_each: fn _ -> RustNif.prepare_sort(size) end}
+     before_each: fn _ -> RustNif.prepare_sort(size) end},
+
+  # === ETS ordered_set (AVL tree) ===
+  "11. ETS ordered_set (AVL tree insert + tab2list)" =>
+    {fn _input -> SortingBench.EtsSort.sort(list) end,
+     before_each: fn _ -> :ok end}
 }
 
 # Conditionally add Nx (BinaryBackend)
@@ -134,6 +152,19 @@ scenarios =
   if explorer_available? do
     Map.put(scenarios, "09. Explorer (Polars)", {
       fn _input -> SortingBench.ExplorerSort.sort(list) end,
+      before_each: fn _ -> :ok end
+    })
+  else
+    scenarios
+  end
+
+# Conditionally add Port sort
+scenarios =
+  if port_sort_info do
+    port = port_sort_info
+
+    Map.put(scenarios, "12. Port stdin/stdout (Rust via pipe)", {
+      fn _input -> SortingBench.PortSort.sort(port, binary) end,
       before_each: fn _ -> :ok end
     })
   else
@@ -181,6 +212,8 @@ Benchee.run(
 )
 
 # -- Cleanup ------------------------------------------------------------------
+if port_sort_info, do: SortingBench.PortSort.stop(port_sort_info)
+
 case c_node_info do
   {port, c_node_name} ->
     IO.puts("\nShutting down C Node...")
