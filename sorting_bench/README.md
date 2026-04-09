@@ -552,7 +552,7 @@ exactly how much wall time is spent on copying/serialization.
 ## Copy Cost Spectrum
 
 ```
-Zero copy ◄──────────────────────────────────────────────────────► Maximum copy
+Zero copy ◄──────────────────────────────────────────────────--------------────► Maximum copy
 
  NIF          NIF binary    NIF binary    mmap full    NIF list      Port        C Node       ETS
  trigger_sort in-place      safe copy     cycle        protocol      pipe        dist TCP     ordered_set
@@ -560,6 +560,26 @@ Zero copy ◄──────────────────────�
               UNSAFE                                    walks)        copies)     serialize    copies +
                                                                                   + TCP)       AVL tree)
 ```
+
+---
+
+## Sorting Algorithms
+
+| Algorithm | Used by | Random | Presorted | Reverse sorted |
+|---|---|---|---|---|
+| **Merge sort** | Erlang (`:lists.sort`) | O(n log n) | O(n log n) | O(n log n) |
+| **pdqsort** (pattern-defeating quicksort) | Rust (`sort_unstable`) | O(n log n) | O(n) | O(n log n) |
+| **Introsort** (quicksort + heapsort) | C++ (`std::sort`, libc++) | O(n log n) | O(n log n) | O(n log n) |
+| **qsort** (libc, typically quicksort) | C (`qsort`) | O(n log n) | O(n log n) | O(n log n) |
+| **AVL tree insert** | ETS `ordered_set` | O(n log n) | O(n log n) | O(n log n) |
+| **Radix/introsort hybrid** | Polars (Explorer) | O(n log n) | O(n log n) | O(n log n) |
+| **XLA JIT-compiled sort** | Nx (EXLA) | O(n log n) | O(n log n) | O(n log n) |
+
+All algorithms are O(n log n) in the average/worst case. The key difference
+is **constant factors**: function call overhead (qsort's function pointer vs.
+inlined comparators), cache behavior, and branch prediction. pdqsort stands
+out by detecting presorted runs in O(n), giving it a significant edge on
+partially sorted inputs.
 
 ---
 
