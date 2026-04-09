@@ -1,0 +1,8 @@
+[package]
+name = "port_sort"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "port_sort"
+path = "src/main.rs"

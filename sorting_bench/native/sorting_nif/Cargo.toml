@@ -1,0 +1,13 @@
+[package]
+name = "sorting_nif"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "sorting_nif"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.34"
+memmap2 = "0.9"
