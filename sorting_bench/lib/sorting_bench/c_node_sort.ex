@@ -55,6 +55,17 @@ defmodule SortingBench.CNodeSort do
     end
   end
 
+  @doc "Reference: generate + sort entirely in the C Node (zero data transfer)"
+  def generate_and_sort(c_node_name, num_elements) do
+    send({:any, c_node_name}, {self(), {:generate_and_sort, num_elements}})
+
+    receive do
+      :ok -> :ok
+    after
+      30_000 -> raise "C Node generate_and_sort timeout"
+    end
+  end
+
   def stop(port, c_node_name) do
     send({:any, c_node_name}, {self(), :stop})
     Process.sleep(100)

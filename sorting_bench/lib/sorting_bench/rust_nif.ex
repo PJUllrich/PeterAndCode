@@ -21,4 +21,7 @@ defmodule SortingBench.RustNif do
 
   @doc "Read the mmap region back as a binary"
   def mmap_read(_resource), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc "Reference: generate + sort entirely in Rust (zero BEAM overhead)"
+  def generate_and_sort(_num_elements), do: :erlang.nif_error(:nif_not_loaded)
 end

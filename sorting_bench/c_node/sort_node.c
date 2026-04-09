@@ -115,7 +115,40 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        ei_decode_atom(buf.buff, &index, atom_buf); /* :sort */
+        ei_decode_atom(buf.buff, &index, atom_buf);
+
+        /* Handle :generate_and_sort — pure native reference run */
+        if (strcmp(atom_buf, "generate_and_sort") == 0) {
+            long num_elements;
+            ei_decode_long(buf.buff, &index, &num_elements);
+
+            int64_t *arr = malloc(num_elements * sizeof(int64_t));
+            if (!arr) {
+                fprintf(stderr, "[C Node] malloc for generate_and_sort failed\n");
+                continue;
+            }
+
+            /* Fast xorshift64 PRNG */
+            uint64_t rng = 0xdeadbeefcafe1234ULL;
+            for (long i = 0; i < num_elements; i++) {
+                rng ^= rng << 13;
+                rng ^= rng >> 7;
+                rng ^= rng << 17;
+                arr[i] = (int64_t)(rng % 1000000000);
+            }
+
+            qsort(arr, num_elements, sizeof(int64_t), compare_i64);
+            free(arr);
+
+            /* Reply :ok */
+            ei_x_buff reply;
+            ei_x_new_with_version(&reply);
+            ei_x_encode_atom(&reply, "ok");
+            ei_send(fd, &from, reply.buff, reply.index);
+            ei_x_free(&reply);
+            continue;
+        }
+
         if (strcmp(atom_buf, "sort") != 0) {
             fprintf(stderr, "[C Node] Unknown command: %s\n", atom_buf);
             continue;

@@ -90,7 +90,12 @@ scenarios = %{
      before_each: fn _ ->
        RustNif.mmap_write(mmap, binary)
        :ok
-     end}
+     end},
+
+  # === Reference: pure native (generate + sort, zero BEAM overhead) ===
+  "00. Rust NIF (generate+sort in Rust — reference)" =>
+    {fn _input -> RustNif.generate_and_sort(size) end,
+     before_each: fn _ -> :ok end}
 }
 
 # Conditionally add Nx (BinaryBackend)
@@ -130,8 +135,13 @@ scenarios =
 scenarios =
   case c_node_info do
     {_port, c_node_name} ->
-      Map.put(scenarios, "10. C Node (distributed Erlang)", {
+      scenarios
+      |> Map.put("10. C Node (distributed Erlang)", {
         fn _input -> SortingBench.CNodeSort.sort(c_node_name, binary) end,
+        before_each: fn _ -> :ok end
+      })
+      |> Map.put("00. C Node (generate+sort in C — reference)", {
+        fn _input -> SortingBench.CNodeSort.generate_and_sort(c_node_name, size) end,
         before_each: fn _ -> :ok end
       })
 

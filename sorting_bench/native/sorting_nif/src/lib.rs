@@ -143,4 +143,30 @@ fn mmap_read(resource: ResourceArc<MmapResource>) -> OwnedBinary {
     owned
 }
 
+// =============================================================================
+// Reference: pure Rust generate + sort (no BEAM data, no copy overhead)
+//
+// Generates `num_elements` random i64s entirely inside the NIF using a fast
+// xorshift64 PRNG, sorts them with sort_unstable, and returns :ok.
+// This is the theoretical ceiling — pure native speed with zero copy cost.
+// =============================================================================
+fn xorshift64(state: &mut u64) -> i64 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    (x % 1_000_000_000) as i64
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+fn generate_and_sort(num_elements: usize) -> Atom {
+    let mut rng_state: u64 = 0xdeadbeefcafe1234;
+    let mut v: Vec<i64> = (0..num_elements)
+        .map(|_| xorshift64(&mut rng_state))
+        .collect();
+    v.sort_unstable();
+    atoms::ok()
+}
+
 rustler::init!("Elixir.SortingBench.RustNif");
