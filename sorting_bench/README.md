@@ -644,3 +644,25 @@ Results with HTML reports are saved to `rust_bench/target/criterion/`.
 
 Measures pure C `qsort` with no BEAM involvement.
 Same scenarios as the Rust benchmark for direct comparison.
+
+### Unsafe Binary Mutation Demo
+
+```bash
+mix run bench/unsafe_demo.exs
+```
+
+Demonstrates **why the zero-copy in-place NIF sort (approach 04) is dangerous**.
+The BEAM assumes binaries are immutable, but the NIF mutates the underlying
+memory. This script shows four scenarios where that breaks:
+
+1. **Shared reference** — two variables point to the same refc binary; sorting
+   via one silently mutates the other
+2. **Sub-binary corruption** — a sub-binary (`<<chunk::binary-size(24), _::binary>> = big`)
+   points into the parent binary's memory; sorting the parent corrupts the sub-binary
+3. **Cross-process mutation** — another process holds a reference to the binary;
+   the parent sorts it in-place and the child's "copy" changes silently
+4. **The safe alternative** — `:binary.copy/1` creates a separate refc binary
+   that isolates the mutation
+
+This is not included in the timed benchmarks — it is a safety test showing
+why `:binary.copy/1` is essential before any in-place mutation.
