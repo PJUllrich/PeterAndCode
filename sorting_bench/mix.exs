@@ -20,7 +20,7 @@ defmodule SortingBench.MixProject do
   defp deps do
     [
       # Rust NIF integration
-      {:rustler, "~> 0.34"},
+      {:rustler, "~> 0.36"},
 
       # Benchmarking
       {:benchee, "~> 1.3"},

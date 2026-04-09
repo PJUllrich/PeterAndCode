@@ -7,6 +7,21 @@ the sort engine) and **sorting speed** (how fast the actual sort runs).
 The ideal would be zero copy cost with Rust-level sorting speed. This project
 measures how close each approach gets.
 
+## Test Setup
+
+Each benchmark iteration simulates a realistic function call: **allocate a
+buffer, sort the data, free the buffer**. This matches the real-world scenario
+where a C/Rust function receives an array, sorts it, and returns the result.
+
+All benchmarks test three input patterns:
+
+- **Random** — average case, uniformly distributed integers
+- **Presorted** — best case for adaptive algorithms (e.g. pdqsort detects sorted runs in near-linear time)
+- **Reverse sorted** — classic worst case for naive quicksort implementations
+
+The standalone Rust and C++ benchmarks use the same **xorshift64 PRNG** with
+identical seeds, so they sort the exact same data for fair comparison.
+
 ## Data Format
 
 All native approaches use a packed binary of **native-endian signed 64-bit
@@ -40,6 +55,7 @@ New sorted list (BEAM heap)
 ```
 
 **Pros:** No interop overhead. No data leaves the BEAM process.
+
 **Cons:** Merge sort is O(n log n) but allocates many intermediate list cells.
 The per-comparison fun call adds overhead versus native term comparison.
 
@@ -65,6 +81,7 @@ New sorted list (BEAM heap)
 
 **Pros:** Fastest pure-BEAM sort. Same algorithm as Enum.sort but skips
 ~20M Elixir fun calls.
+
 **Cons:** Still Erlang merge sort — fundamentally slower than native
 introsort/pdqsort. Still allocates intermediate list cells.
 
@@ -99,6 +116,7 @@ Sorted Elixir list (BEAM heap)
 ```
 
 **Pros:** Uses the fastest sort algorithm available. Straightforward Rustler API.
+
 **Cons:** Highest NIF copy cost. The two O(n) list walks (in + out) dominate
 total time for large inputs. Each Erlang list cons cell must be individually
 decoded/encoded.
@@ -139,6 +157,7 @@ Sorted Elixir binary (BEAM refc binary)
 
 **Pros:** Only one memcpy. Input is truly zero-copy (just a pointer).
 Output ownership transfers cleanly. Much faster than the list protocol.
+
 **Cons:** Still allocates 8 MB for the output binary. Caller must convert
 the list to a packed binary beforehand (one-time cost).
 
@@ -175,6 +194,7 @@ Caller reads the mutated binary
 
 **Pros:** Absolute zero copy. Fastest possible data path — the sort runs
 directly on BEAM-owned memory. No allocation.
+
 **Cons:** **Dangerously unsafe.** If any other BEAM process, binary reference,
 or sub-binary points to this data, they see corrupted/sorted data unexpectedly.
 The benchmark ensures safety by calling `:binary.copy/1` to create a
@@ -215,6 +235,7 @@ Sorted Elixir binary (BEAM refc binary)
 **Pros:** The sort step is truly zero-copy. Shared memory persists across
 NIF calls — useful if you sort repeatedly or multiple processes read the
 result. The mmap is backed by tmpfs, so no disk I/O.
+
 **Cons:** Full cycle has 2 memcpys — same as the list protocol in copy count
 but much cheaper per byte (memcpy vs. list cell encode/decode). The mmap
 resource setup is a one-time cost.
@@ -239,6 +260,7 @@ Sorted mmap region
 **Pros:** True zero-copy sort with no safety concerns (unlike approach 4).
 The mmap region is explicitly mutable. Demonstrates the raw sort speed
 when copy cost is completely eliminated.
+
 **Cons:** Requires prior mmap_write to load data (excluded from this
 benchmark via before_each). Reading the result back requires mmap_read
 (an additional memcpy not measured here).
@@ -274,6 +296,7 @@ Sorted Elixir list
 ```
 
 **Pros:** Part of the Nx ecosystem. Clean API.
+
 **Cons:** BinaryBackend runs entirely in Elixir — expected to be slower
 than :lists.sort for this use case. Conversion overhead on both ends.
 Nx is designed for GPU/TPU workloads, not CPU-bound integer sorts.
@@ -310,6 +333,7 @@ Sorted Elixir list
 
 **Pros:** JIT-compiled native code. Potentially very fast for the sort itself.
 Can run on GPU/TPU for massive parallelism.
+
 **Cons:** JIT compilation overhead on first run. Data must cross the
 BEAM↔XLA boundary twice. Designed for numerical computing workloads, not
 general-purpose sorting.
@@ -348,6 +372,7 @@ Sorted Elixir list
 
 **Pros:** Polars is extremely fast for columnar operations. If your data is
 already in Explorer DataFrames, the sort is nearly free.
+
 **Cons:** Two NIF-mediated conversions (list↔Series). Overkill if you only
 need a sort — Explorer is a full DataFrame library.
 
@@ -399,6 +424,7 @@ Sorted Elixir binary (BEAM refc binary)
 **Pros:** The C Node runs in its own OS process — a crash cannot bring down
 the BEAM. `qsort` is very fast for the actual computation. Full Erlang
 distribution protocol means you could run this on a different machine.
+
 **Cons:** Highest copy cost of all approaches. Data is serialized, sent over
 TCP, deserialized, sorted, serialized again, sent back, and deserialized again.
 For 8 MB of data over loopback, the TCP overhead dominates.
@@ -438,6 +464,7 @@ Sorted Elixir list
 **Pros:** Built into the BEAM — no external dependencies. ETS is concurrent-safe
 and can be shared across processes. The data is sorted as it's inserted (no
 separate sort step).
+
 **Cons:** Very high overhead. Each of the 1M inserts involves a term copy into
 ETS memory + AVL tree rebalancing. The Enum.with_index and Enum.map passes add
 further list traversals. Expected to be slower than all other approaches for
@@ -489,6 +516,7 @@ Sorted Elixir binary (BEAM refc binary)
 **Pros:** Crash isolation (like C Node) — the Rust process cannot crash the
 BEAM. Simpler setup than a C Node (no distribution protocol, no epmd).
 Standard Unix pipe interface works with any language.
+
 **Cons:** 4 kernel copies (2 per direction: userspace→kernel→userspace).
 For 8 MB of data, the pipe throughput is the bottleneck, not the sort.
 Pipe buffer is typically 64 KB, so the kernel must do many small transfers.
@@ -537,14 +565,18 @@ Zero copy ◄──────────────────────�
 
 ## Prerequisites
 
-- Elixir >= 1.14
-- Rust (for the NIF, Port binary, and standalone benchmark)
-- GCC/G++ + Erlang dev headers (for the C Node)
-- Google Benchmark (`libbenchmark-dev`) for the standalone C benchmark
+- Elixir 1.19.4
+- Erlang/OTP 28.4
+- Rust 1.94.0 (for the NIF, Port binary, and standalone benchmark)
+- GCC/G++ 23 + Erlang dev headers (for the C Node)
+- Google Benchmark for the standalone C benchmark
 
 ## Setup
 
 ```bash
+# Install Google Benchmark (macOS)
+brew install google-benchmark
+
 # Install Elixir deps
 mix deps.get
 

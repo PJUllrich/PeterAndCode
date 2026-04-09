@@ -5,16 +5,24 @@
 //!
 //! Run:  cargo bench  (from the rust_bench/ directory)
 
-use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 const N: usize = 1_000_000;
-const MAX_VAL: i64 = 1_000_000_000;
+const MAX_VAL: u64 = 1_000_000_000;
+
+/// Same xorshift64 PRNG as the C++ benchmark and NIF.
+fn xorshift64(state: &mut u64) -> i64 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    (x % MAX_VAL) as i64
+}
 
 fn generate_data(n: usize) -> Vec<i64> {
-    let mut rng = StdRng::seed_from_u64(0xdeadbeefcafe1234);
-    (0..n).map(|_| rng.gen_range(0..MAX_VAL)).collect()
+    let mut rng_state: u64 = 0xdeadbeefcafe1234;
+    (0..n).map(|_| xorshift64(&mut rng_state)).collect()
 }
 
 fn bench_sort(c: &mut Criterion) {
@@ -34,31 +42,27 @@ fn bench_sort(c: &mut Criterion) {
     );
 
     // Measure sort-only (data pre-generated, fresh copy per iteration)
+    // Uses iter() instead of iter_batched so that alloc + dealloc are
+    // included in the measurement, matching the C++ benchmark and the
+    // real use case (receive data, sort, return).
     group.bench_with_input(BenchmarkId::new("sort_only", N), &N, |b, &n| {
-        b.iter_batched(
-            || generate_data(n),
-            |mut data| {
-                data.sort_unstable();
-                data
-            },
-            BatchSize::LargeInput,
-        );
+        let source = generate_data(n);
+        b.iter(|| {
+            let mut data = source.clone();
+            data.sort_unstable();
+            data
+        });
     });
 
     // Measure sort on already-sorted data (best case)
     group.bench_with_input(BenchmarkId::new("sort_presorted", N), &N, |b, &n| {
-        b.iter_batched(
-            || {
-                let mut data = generate_data(n);
-                data.sort_unstable();
-                data
-            },
-            |mut data| {
-                data.sort_unstable();
-                data
-            },
-            BatchSize::LargeInput,
-        );
+        let mut source = generate_data(n);
+        source.sort_unstable();
+        b.iter(|| {
+            let mut data = source.clone();
+            data.sort_unstable();
+            data
+        });
     });
 
     // Measure sort on reverse-sorted data (worst case for some algorithms)
@@ -66,18 +70,13 @@ fn bench_sort(c: &mut Criterion) {
         BenchmarkId::new("sort_reverse_sorted", N),
         &N,
         |b, &n| {
-            b.iter_batched(
-                || {
-                    let mut data = generate_data(n);
-                    data.sort_unstable_by(|a, b| b.cmp(a));
-                    data
-                },
-                |mut data| {
-                    data.sort_unstable();
-                    data
-                },
-                BatchSize::LargeInput,
-            );
+            let mut source = generate_data(n);
+            source.sort_unstable_by(|a, b| b.cmp(a));
+            b.iter(|| {
+                let mut data = source.clone();
+                data.sort_unstable();
+                data
+            });
         },
     );
 

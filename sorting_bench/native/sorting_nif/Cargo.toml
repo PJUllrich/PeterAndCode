@@ -9,5 +9,5 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = "0.34"
+rustler = "0.36"
 memmap2 = "0.9"

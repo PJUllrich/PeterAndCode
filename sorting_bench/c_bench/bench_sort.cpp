@@ -9,6 +9,7 @@
  */
 
 #include <benchmark/benchmark.h>
+#include <algorithm>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +56,7 @@ static void BM_GenerateAndSort(benchmark::State &state) {
     }
     state.SetItemsProcessed(state.iterations() * n);
 }
-BENCHMARK(BM_GenerateAndSort)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_GenerateAndSort)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
 
 static void BM_SortOnly(benchmark::State &state) {
     size_t n = state.range(0);
@@ -70,7 +71,7 @@ static void BM_SortOnly(benchmark::State &state) {
     }
     state.SetItemsProcessed(state.iterations() * n);
 }
-BENCHMARK(BM_SortOnly)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_SortOnly)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
 
 static void BM_SortPresorted(benchmark::State &state) {
     size_t n = state.range(0);
@@ -86,7 +87,7 @@ static void BM_SortPresorted(benchmark::State &state) {
     }
     state.SetItemsProcessed(state.iterations() * n);
 }
-BENCHMARK(BM_SortPresorted)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_SortPresorted)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
 
 static int compare_i64_reverse(const void *a, const void *b) {
     return -compare_i64(a, b);
@@ -106,6 +107,67 @@ static void BM_SortReverseSorted(benchmark::State &state) {
     }
     state.SetItemsProcessed(state.iterations() * n);
 }
-BENCHMARK(BM_SortReverseSorted)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(BM_SortReverseSorted)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
+
+/* --- std::sort benchmarks --- */
+
+static void BM_StdSort_GenerateAndSort(benchmark::State &state) {
+    size_t n = state.range(0);
+    for (auto _ : state) {
+        int64_t *arr = generate_data(n);
+        std::sort(arr, arr + n);
+        benchmark::DoNotOptimize(arr);
+        free(arr);
+    }
+    state.SetItemsProcessed(state.iterations() * n);
+}
+BENCHMARK(BM_StdSort_GenerateAndSort)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
+
+static void BM_StdSort_SortOnly(benchmark::State &state) {
+    size_t n = state.range(0);
+    for (auto _ : state) {
+        state.PauseTiming();
+        int64_t *arr = generate_data(n);
+        state.ResumeTiming();
+
+        std::sort(arr, arr + n);
+        benchmark::DoNotOptimize(arr);
+        free(arr);
+    }
+    state.SetItemsProcessed(state.iterations() * n);
+}
+BENCHMARK(BM_StdSort_SortOnly)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
+
+static void BM_StdSort_SortPresorted(benchmark::State &state) {
+    size_t n = state.range(0);
+    for (auto _ : state) {
+        state.PauseTiming();
+        int64_t *arr = generate_data(n);
+        qsort(arr, n, sizeof(int64_t), compare_i64);
+        state.ResumeTiming();
+
+        std::sort(arr, arr + n);
+        benchmark::DoNotOptimize(arr);
+        free(arr);
+    }
+    state.SetItemsProcessed(state.iterations() * n);
+}
+BENCHMARK(BM_StdSort_SortPresorted)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
+
+static void BM_StdSort_SortReverseSorted(benchmark::State &state) {
+    size_t n = state.range(0);
+    for (auto _ : state) {
+        state.PauseTiming();
+        int64_t *arr = generate_data(n);
+        std::sort(arr, arr + n, std::greater<int64_t>());
+        state.ResumeTiming();
+
+        std::sort(arr, arr + n);
+        benchmark::DoNotOptimize(arr);
+        free(arr);
+    }
+    state.SetItemsProcessed(state.iterations() * n);
+}
+BENCHMARK(BM_StdSort_SortReverseSorted)->Arg(1000000)->Unit(benchmark::kMillisecond)->MinTime(2.0);
 
 BENCHMARK_MAIN();
