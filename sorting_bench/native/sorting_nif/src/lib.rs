@@ -169,4 +169,41 @@ fn generate_and_sort(num_elements: usize) -> Atom {
     atoms::ok()
 }
 
+// =============================================================================
+// Elixir-instructed sort: prepare data natively, then sort on "go"
+//
+// prepare_sort(n): generates n random i64s, stores them in a NIF resource.
+//                  Called in Benchee's before_each (excluded from timing).
+// trigger_sort(resource): sorts the stored data in-place, returns :ok.
+//                         This is the only thing Benchee measures.
+//
+// By comparing trigger_sort vs the BEAM-orchestrated approaches, you see
+// exactly how much time is spent on data copying/serialization vs. actual sort.
+// The NIF call boundary itself costs nearly nothing.
+// =============================================================================
+struct SortDataResource {
+    data: Mutex<Vec<i64>>,
+}
+
+#[rustler::resource_impl]
+impl Resource for SortDataResource {}
+
+#[rustler::nif]
+fn prepare_sort(num_elements: usize) -> ResourceArc<SortDataResource> {
+    let mut rng_state: u64 = 0xdeadbeefcafe1234;
+    let data: Vec<i64> = (0..num_elements)
+        .map(|_| xorshift64(&mut rng_state))
+        .collect();
+    ResourceArc::new(SortDataResource {
+        data: Mutex::new(data),
+    })
+}
+
+#[rustler::nif(schedule = "DirtyCpu")]
+fn trigger_sort(resource: ResourceArc<SortDataResource>) -> Atom {
+    let mut data = resource.data.lock().unwrap();
+    data.sort_unstable();
+    atoms::ok()
+}
+
 rustler::init!("Elixir.SortingBench.RustNif");

@@ -95,7 +95,12 @@ scenarios = %{
   # === Reference: pure native (generate + sort, zero BEAM overhead) ===
   "00. Rust NIF (generate+sort in Rust — reference)" =>
     {fn _input -> RustNif.generate_and_sort(size) end,
-     before_each: fn _ -> :ok end}
+     before_each: fn _ -> :ok end},
+
+  # === Elixir-instructed: data lives in Rust, Elixir just says "go" ===
+  "00. Rust NIF (Elixir-instructed sort — measures NIF call overhead)" =>
+    {fn input -> RustNif.trigger_sort(input) end,
+     before_each: fn _ -> RustNif.prepare_sort(size) end}
 }
 
 # Conditionally add Nx (BinaryBackend)
@@ -143,6 +148,13 @@ scenarios =
       |> Map.put("00. C Node (generate+sort in C — reference)", {
         fn _input -> SortingBench.CNodeSort.generate_and_sort(c_node_name, size) end,
         before_each: fn _ -> :ok end
+      })
+      |> Map.put("00. C Node (Elixir-instructed sort — measures dist overhead)", {
+        fn _input -> SortingBench.CNodeSort.trigger_sort(c_node_name) end,
+        before_each: fn _ ->
+          SortingBench.CNodeSort.prepare_sort(c_node_name, size)
+          :ok
+        end
       })
 
     nil ->

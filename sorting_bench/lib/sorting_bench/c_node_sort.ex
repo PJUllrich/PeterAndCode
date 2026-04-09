@@ -66,6 +66,28 @@ defmodule SortingBench.CNodeSort do
     end
   end
 
+  @doc "Pre-generate random data inside the C Node (call in before_each)"
+  def prepare_sort(c_node_name, num_elements) do
+    send({:any, c_node_name}, {self(), {:prepare_sort, num_elements}})
+
+    receive do
+      :ready -> :ok
+    after
+      30_000 -> raise "C Node prepare_sort timeout"
+    end
+  end
+
+  @doc "Sort the pre-generated data in the C Node (Elixir-instructed, minimal copy)"
+  def trigger_sort(c_node_name) do
+    send({:any, c_node_name}, {self(), {:trigger_sort, :go}})
+
+    receive do
+      :ok -> :ok
+    after
+      30_000 -> raise "C Node trigger_sort timeout"
+    end
+  end
+
   def stop(port, c_node_name) do
     send({:any, c_node_name}, {self(), :stop})
     Process.sleep(100)

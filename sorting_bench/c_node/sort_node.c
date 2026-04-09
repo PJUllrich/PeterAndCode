@@ -30,6 +30,10 @@ static int compare_i64(const void *a, const void *b) {
     return 0;
 }
 
+/* Pre-allocated buffer for the prepare_sort / trigger_sort protocol */
+static int64_t *prepared_data = NULL;
+static size_t   prepared_len  = 0;
+
 int main(int argc, char **argv) {
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <alive_name> <cookie> <beam_node>\n", argv[0]);
@@ -116,6 +120,45 @@ int main(int argc, char **argv) {
         }
 
         ei_decode_atom(buf.buff, &index, atom_buf);
+
+        /* Handle :prepare_sort — pre-generate data, store in static buffer */
+        if (strcmp(atom_buf, "prepare_sort") == 0) {
+            long num_elements;
+            ei_decode_long(buf.buff, &index, &num_elements);
+
+            free(prepared_data);
+            prepared_data = malloc(num_elements * sizeof(int64_t));
+            prepared_len = num_elements;
+
+            uint64_t rng = 0xdeadbeefcafe1234ULL;
+            for (long i = 0; i < num_elements; i++) {
+                rng ^= rng << 13;
+                rng ^= rng >> 7;
+                rng ^= rng << 17;
+                prepared_data[i] = (int64_t)(rng % 1000000000);
+            }
+
+            ei_x_buff reply;
+            ei_x_new_with_version(&reply);
+            ei_x_encode_atom(&reply, "ready");
+            ei_send(fd, &from, reply.buff, reply.index);
+            ei_x_free(&reply);
+            continue;
+        }
+
+        /* Handle :trigger_sort — sort pre-generated buffer, reply :ok */
+        if (strcmp(atom_buf, "trigger_sort") == 0) {
+            if (prepared_data && prepared_len > 0) {
+                qsort(prepared_data, prepared_len, sizeof(int64_t), compare_i64);
+            }
+
+            ei_x_buff reply;
+            ei_x_new_with_version(&reply);
+            ei_x_encode_atom(&reply, "ok");
+            ei_send(fd, &from, reply.buff, reply.index);
+            ei_x_free(&reply);
+            continue;
+        }
 
         /* Handle :generate_and_sort — pure native reference run */
         if (strcmp(atom_buf, "generate_and_sort") == 0) {

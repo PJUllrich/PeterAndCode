@@ -24,4 +24,10 @@ defmodule SortingBench.RustNif do
 
   @doc "Reference: generate + sort entirely in Rust (zero BEAM overhead)"
   def generate_and_sort(_num_elements), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc "Pre-generate random data in Rust, return resource (call in before_each)"
+  def prepare_sort(_num_elements), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc "Sort pre-generated data in Rust (Elixir-instructed, minimal overhead)"
+  def trigger_sort(_resource), do: :erlang.nif_error(:nif_not_loaded)
 end
