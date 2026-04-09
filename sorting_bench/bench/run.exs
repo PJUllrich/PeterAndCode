@@ -58,9 +58,13 @@ c_node_info =
 
 # -- Build benchmark scenarios ------------------------------------------------
 scenarios = %{
-  # === Baseline ===
-  "01. Enum.sort (pure Elixir)" =>
+  # === Baselines ===
+  "01a. Enum.sort (Elixir — fun call per comparison)" =>
     {fn _input -> Enum.sort(list) end,
+     before_each: fn _ -> :ok end},
+
+  "01b. :lists.sort (Erlang — native term comparison, no fun overhead)" =>
+    {fn _input -> :lists.sort(list) end,
      before_each: fn _ -> :ok end},
 
   # === Rust NIFs ===
