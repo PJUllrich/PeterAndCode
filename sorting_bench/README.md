@@ -666,3 +666,24 @@ memory. This script shows four scenarios where that breaks:
 
 This is not included in the timed benchmarks — it is a safety test showing
 why `:binary.copy/1` is essential before any in-place mutation.
+
+### Safe Binary Mutation Demo
+
+```bash
+mix run bench/safe_demo.exs
+```
+
+The counterpart to the unsafe demo. Runs the **exact same three scenarios**
+(shared reference, sub-binary, cross-process) but applies `:binary.copy/1`
+before passing the binary to the NIF. Every scenario that was broken in
+the unsafe demo now works correctly.
+
+After the demos, it runs a **Benchee benchmark** comparing:
+
+- **UNSAFE** — `sort_binary_inplace` without a safety copy
+- **SAFE** — `:binary.copy/1` + `sort_binary_inplace`
+- **sort_binary** — the NIF that copies internally (the recommended approach)
+
+This shows that the "safety tax" is just a single 8 MB memcpy, and that
+`:binary.copy + sort_binary_inplace` performs identically to `sort_binary`.
+There is no reason to use the unsafe approach in production.
