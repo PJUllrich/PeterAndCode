@@ -644,3 +644,46 @@ Results with HTML reports are saved to `rust_bench/target/criterion/`.
 
 Measures pure C++ `std::sort` with no BEAM involvement.
 Same scenarios as the Rust benchmark for direct comparison.
+
+### Unsafe Binary Mutation Demo
+
+```bash
+mix run bench/unsafe_demo.exs
+```
+
+Demonstrates **why the zero-copy in-place NIF sort (approach 04) is dangerous**.
+The BEAM assumes binaries are immutable, but the NIF mutates the underlying
+memory. This script shows four scenarios where that breaks:
+
+1. **Shared reference** — two variables point to the same refc binary; sorting
+   via one silently mutates the other
+2. **Sub-binary corruption** — a sub-binary (`<<chunk::binary-size(24), _::binary>> = big`)
+   points into the parent binary's memory; sorting the parent corrupts the sub-binary
+3. **Cross-process mutation** — another process holds a reference to the binary;
+   the parent sorts it in-place and the child's "copy" changes silently
+4. **The safe alternative** — `:binary.copy/1` creates a separate refc binary
+   that isolates the mutation
+
+This is not included in the timed benchmarks — it is a safety test showing
+why `:binary.copy/1` is essential before any in-place mutation.
+
+### Safe Binary Mutation Demo
+
+```bash
+mix run bench/safe_demo.exs
+```
+
+The counterpart to the unsafe demo. Runs the **exact same three scenarios**
+(shared reference, sub-binary, cross-process) but applies `:binary.copy/1`
+before passing the binary to the NIF. Every scenario that was broken in
+the unsafe demo now works correctly.
+
+After the demos, it runs a **Benchee benchmark** comparing:
+
+- **UNSAFE** — `sort_binary_inplace` without a safety copy
+- **SAFE** — `:binary.copy/1` + `sort_binary_inplace`
+- **sort_binary** — the NIF that copies internally (the recommended approach)
+
+This shows that the "safety tax" is just a single 8 MB memcpy, and that
+`:binary.copy + sort_binary_inplace` performs identically to `sort_binary`.
+There is no reason to use the unsafe approach in production.

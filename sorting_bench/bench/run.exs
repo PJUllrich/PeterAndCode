@@ -196,6 +196,81 @@ scenarios =
       scenarios
   end
 
+# -- Verify every approach produces correct output (outside timing) -----------
+alias SortingBench.Verify
+
+expected_sum = Enum.sum(list)
+IO.puts("\nVerifying all approaches (expected sum: #{expected_sum})...")
+
+# Baselines (return lists)
+Verify.verify_list!("Enum.sort", Enum.sort(list), expected_sum)
+Verify.verify_list!(":lists.sort", :lists.sort(list), expected_sum)
+
+# Rust NIF — list protocol (returns list)
+Verify.verify_list!("Rust NIF list protocol", RustNif.sort_list(list), expected_sum)
+
+# Rust NIF — binary safe copy (returns binary)
+Verify.verify_binary!("Rust NIF binary safe", RustNif.sort_binary(binary), expected_sum)
+
+# Rust NIF — binary in-place UNSAFE (returns :ok, mutates binary)
+inplace_copy = :binary.copy(binary)
+:ok = RustNif.sort_binary_inplace(inplace_copy)
+Verify.verify_binary!("Rust NIF binary in-place", inplace_copy, expected_sum)
+
+# Rust NIF — mmap full cycle (write + sort + read → returns binary)
+RustNif.mmap_write(mmap, binary)
+RustNif.mmap_sort(mmap)
+Verify.verify_binary!("Rust NIF mmap full cycle", RustNif.mmap_read(mmap), expected_sum)
+
+# Rust NIF — mmap sort-only (verify via mmap_read after sort)
+RustNif.mmap_write(mmap, binary)
+RustNif.mmap_sort(mmap)
+Verify.verify_binary!("Rust NIF mmap sort-only", RustNif.mmap_read(mmap), expected_sum)
+
+# ETS ordered_set (returns list)
+Verify.verify_list!("ETS ordered_set", SortingBench.EtsSort.sort(list), expected_sum)
+
+# Nx — BinaryBackend (returns list)
+if nx_available? do
+  Verify.verify_list!("Nx BinaryBackend", SortingBench.NxSort.sort_binary_backend(list), expected_sum)
+end
+
+# Nx — EXLA (returns list)
+if exla_available? do
+  Verify.verify_list!("Nx EXLA", SortingBench.NxSort.sort_exla_backend(list), expected_sum)
+end
+
+# Explorer (returns list)
+if explorer_available? do
+  Verify.verify_list!("Explorer Polars", SortingBench.ExplorerSort.sort(list), expected_sum)
+end
+
+# Port stdin/stdout (returns binary)
+if port_sort_info do
+  Verify.verify_binary!("Port stdin/stdout", SortingBench.PortSort.sort(port_sort_info, binary), expected_sum)
+end
+
+# C Node (returns binary)
+case c_node_info do
+  {_port, c_node_name} ->
+    Verify.verify_binary!("C Node distributed", SortingBench.CNodeSort.sort(c_node_name, binary), expected_sum)
+  nil -> :ok
+end
+
+# Reference runs (generate_and_sort, trigger_sort) return :ok — data stays
+# on the native side and never comes back. Cannot verify from Elixir.
+IO.puts("  [SKIP] Rust NIF generate+sort (data stays in Rust)")
+IO.puts("  [SKIP] Rust NIF trigger_sort (data stays in Rust)")
+
+case c_node_info do
+  {_port, _} ->
+    IO.puts("  [SKIP] C Node generate+sort (data stays in C)")
+    IO.puts("  [SKIP] C Node trigger_sort (data stays in C)")
+  nil -> :ok
+end
+
+IO.puts("Verification complete!\n")
+
 # -- Run Benchee --------------------------------------------------------------
 IO.puts("\n" <> String.duplicate("=", 70))
 IO.puts("SORTING BENCHMARK — #{size} elements")
