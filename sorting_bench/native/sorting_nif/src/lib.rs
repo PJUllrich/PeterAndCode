@@ -101,7 +101,7 @@ fn mmap_create(num_elements: usize) -> ResourceArc<MmapResource> {
         .write(true)
         .create(true)
         .truncate(true)
-        .open("/dev/shm/sorting_bench_mmap")
+        .open(std::env::temp_dir().join("sorting_bench_mmap"))
         .expect("failed to open /dev/shm file");
     file.set_len(size as u64).expect("failed to set file length");
 

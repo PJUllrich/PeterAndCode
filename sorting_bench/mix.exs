@@ -24,6 +24,7 @@ defmodule SortingBench.MixProject do
 
       # Benchmarking
       {:benchee, "~> 1.3"},
+      {:benchee_html, "~> 1.0"},
 
       # Nx (numerical computing) — two backends benchmarked
       {:nx, "~> 0.9"},

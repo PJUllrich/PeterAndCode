@@ -208,7 +208,10 @@ Benchee.run(
   memory_time: 2,
   reduction_time: 0,
   print: [configuration: true, benchmarking: true],
-  formatters: [Benchee.Formatters.Console]
+  formatters: [
+    Benchee.Formatters.Console,
+    {Benchee.Formatters.HTML, file: "bench/output/results.html", auto_open: false}
+  ]
 )
 
 # -- Cleanup ------------------------------------------------------------------
