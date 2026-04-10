@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Benchee Report</title>
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html; charset=utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <link rel="stylesheet" type="text/css" href="assets/stylesheets/benchee.css">
+    <link rel="stylesheet" type="text/css" href="assets/fontello/css/fontello.css">
+  
+</head>
+
+  <body>
+
+    <div class="header">
+  <h1>benchee report</h1>
+  
+
+  <span class="version-note">
+  <a href="javascript:toggleSystemDataInfo();" title="Click to toggle system info">System info</a>
+</span>
+
+</div>
+
+
+    <article id="system-info" class="benchee-systeminfo" >
+  <h3>System info</h3>
+  <ul class="benchee-systeminfo-list">
+    <li>Elixir: 1.19.4</li>
+    <li>Erlang: 28.4</li>
+    <li>Operating system: macOS</li>
+    <li>Available memory: 32 GB</li>
+    <li>CPU Information: Apple M2 Pro</li>
+    <li>Number of Available Cores: 10</li>
+  </ul>
+</article>
+
+
+    
+      <article>
+        <h2>
+          <a name="run_time" href="#run_time">11. ETS ordered_set (AVL tree insert + tab2list) Run Time</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual run time distribution for 11. ETS ordered_set (AVL tree insert + tab2list).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+        <th>Iterations per Second</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">11. ETS ordered_set (AVL tree insert + tab2list)</td>
+        
+        
+          <td>1.18</td>
+          <td>850.66 ms</td>
+          <td>±2.00%</td>
+          <td>848.37 ms</td>
+          <td>none</td>
+          <td>824.21 ms</td>
+          <td>886.69 ms</td>
+        
+        <td>12</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        <section class="benchee-plot-container">
+          <div id="run-times-histogram" class="plot"></div>
+        </section>
+        <section class="benchee-plot-container">
+          <div id="raw-run-times" class="plot"></div>
+        </section>
+      </article>
+    
+
+    
+      <article>
+        <h2>
+          <a name="memory" href="#memory">11. ETS ordered_set (AVL tree insert + tab2list) Memory</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual memory usage distribution for 11. ETS ordered_set (AVL tree insert + tab2list).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">11. ETS ordered_set (AVL tree insert + tab2list)</td>
+        
+        
+          <td>127967216 B</td>
+          <td>±0.00%</td>
+          <td>127967216 B</td>
+          <td>127967216 B</td>
+          <td>127967216 B</td>
+          <td>127967216 B</td>
+        
+        <td>3</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        
+      </article>
+    
+
+    <footer>
+      <a href="https://github.com/PragTob/benchee" target="blank">benchee version: 1.5.0 </a>
+<br/>
+<a href="https://github.com/PragTob/benchee_html" target="blank">benchee_html version: 1.0.1</a>
+
+
+    </footer>
+
+    
+  <script src="assets/javascripts/plotly-2.27.0.min.js"></script>
+  <script src="assets/javascripts/benchee.js"></script>
+
+
+
+    <script>
+      var scenario = {"name":"11. ETS ordered_set (AVL tree insert + tab2list)","job_name":"11. ETS ordered_set (AVL tree insert + tab2list)","input_name":"__no_input","run_time_data":{"statistics":{"maximum":886688349,"mode":null,"sample_size":12,"average":850661875.0833334,"std_dev_ratio":0.02002875737893752,"ips":1.1755552109374092,"std_dev_ips":0.02354491010541109,"percentiles":{"25":840127647.5,"50":848368823.5,"75":861298765.75,"99":886688349.0},"median":848368823.5,"minimum":824210607,"outliers":[],"lower_outlier_bound":808370970.125,"upper_outlier_bound":893055443.125,"absolute_difference":839814052.3110561,"relative_less":0.012752214587275988,"relative_more":78.41775192504903,"std_dev":17037700.30755614},"samples":[860541109,846013341,832298992,886688349,850724306,840136085,843563547,861551318,840124835,824210607,869191328,852898684]},"memory_usage_data":{"statistics":{"maximum":127967216,"mode":127967216,"sample_size":3,"average":127967216.0,"std_dev_ratio":0.0,"ips":null,"std_dev_ips":null,"percentiles":{"25":127967216.0,"50":127967216.0,"75":127967216.0,"99":127967216.0},"median":127967216.0,"minimum":127967216,"outliers":[],"lower_outlier_bound":127967216.0,"upper_outlier_bound":127967216.0,"absolute_difference":127967216.0,"relative_less":0.0,"relative_more":"infinity","std_dev":0.0},"samples":[127967216,127967216,127967216]},"tag":null};
+
+      var inputHeadline = ""
+
+      
+        drawRunTimeHistogram(scenario, inputHeadline);
+        drawRawRunTimeChart(scenario, inputHeadline);
+      
+
+      
+        if (scenario.memory_usage_data.statistics.std_dev !== 0) {
+          drawMemoryHistogram(scenario, inputHeadline);
+          drawRawMemoryChart(scenario, inputHeadline);
+        };
+      
+    </script>
+  </body>
+</html>

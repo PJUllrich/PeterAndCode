@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Benchee Report</title>
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html; charset=utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <link rel="stylesheet" type="text/css" href="assets/stylesheets/benchee.css">
+    <link rel="stylesheet" type="text/css" href="assets/fontello/css/fontello.css">
+  
+</head>
+
+  <body>
+
+    <div class="header">
+  <h1>benchee report</h1>
+  
+
+  <span class="version-note">
+  <a href="javascript:toggleSystemDataInfo();" title="Click to toggle system info">System info</a>
+</span>
+
+</div>
+
+
+    <article id="system-info" class="benchee-systeminfo" >
+  <h3>System info</h3>
+  <ul class="benchee-systeminfo-list">
+    <li>Elixir: 1.19.4</li>
+    <li>Erlang: 28.4</li>
+    <li>Operating system: macOS</li>
+    <li>Available memory: 32 GB</li>
+    <li>CPU Information: Apple M2 Pro</li>
+    <li>Number of Available Cores: 10</li>
+  </ul>
+</article>
+
+
+    
+      <article>
+        <h2>
+          <a name="run_time" href="#run_time">08. Nx (EXLA) Run Time</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual run time distribution for 08. Nx (EXLA).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+        <th>Iterations per Second</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">08. Nx (EXLA)</td>
+        
+        
+          <td>5.58</td>
+          <td>179.13 ms</td>
+          <td>±0.85%</td>
+          <td>179.14 ms</td>
+          <td>none</td>
+          <td>175.70 ms</td>
+          <td>181.69 ms</td>
+        
+        <td>56</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        <section class="benchee-plot-container">
+          <div id="run-times-histogram" class="plot"></div>
+        </section>
+        <section class="benchee-plot-container">
+          <div id="raw-run-times" class="plot"></div>
+        </section>
+      </article>
+    
+
+    
+      <article>
+        <h2>
+          <a name="memory" href="#memory">08. Nx (EXLA) Memory</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual memory usage distribution for 08. Nx (EXLA).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">08. Nx (EXLA)</td>
+        
+        
+          <td>188920824 B</td>
+          <td>±0.00%</td>
+          <td>188920824 B</td>
+          <td>188920824 B</td>
+          <td>188920824 B</td>
+          <td>188920824 B</td>
+        
+        <td>8</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        
+      </article>
+    
+
+    <footer>
+      <a href="https://github.com/PragTob/benchee" target="blank">benchee version: 1.5.0 </a>
+<br/>
+<a href="https://github.com/PragTob/benchee_html" target="blank">benchee_html version: 1.0.1</a>
+
+
+    </footer>
+
+    
+  <script src="assets/javascripts/plotly-2.27.0.min.js"></script>
+  <script src="assets/javascripts/benchee.js"></script>
+
+
+
+    <script>
+      var scenario = {"name":"08. Nx (EXLA)","job_name":"08. Nx (EXLA)","input_name":"__no_input","run_time_data":{"statistics":{"maximum":181689132,"mode":null,"sample_size":56,"average":179133008.89285713,"std_dev_ratio":0.008490412198804292,"ips":5.5824440519397465,"std_dev_ips":0.047397251077731684,"percentiles":{"25":178094369.5,"50":179143796.5,"75":180504923.25,"99":181689132.0},"median":179143796.5,"minimum":175697168,"outliers":[],"lower_outlier_bound":174478538.875,"upper_outlier_bound":184120753.875,"absolute_difference":168285186.1205799,"relative_less":0.06055736371159554,"relative_more":16.513268390653533,"std_dev":1520913.083912432},"samples":[181465258,178550379,176458043,181348550,180598674,179116088,178595296,176246543,176444128,178245712,179229505,180406173,180593632,179898214,178281421,175697168,180349548,179947049,181286758,179569839,180795133,177902962,178741421,178584671,178503004,178756463,177308171,181689132,181289175,177177837,176863043,180697966,180118423,178618504,179250589,181014882,179295964,177616502,177230046,179682464,181272924,179071213,178043922,179171505,179912840,178853921,177805920,180537840,180732882,177335046,180101839,178390379,177496337,179280880,178792589,181184131]},"memory_usage_data":{"statistics":{"maximum":188920824,"mode":188920824,"sample_size":8,"average":188920824.0,"std_dev_ratio":0.0,"ips":null,"std_dev_ips":null,"percentiles":{"25":188920824.0,"50":188920824.0,"75":188920824.0,"99":188920824.0},"median":188920824.0,"minimum":188920824,"outliers":[],"lower_outlier_bound":188920824.0,"upper_outlier_bound":188920824.0,"absolute_difference":188920824.0,"relative_less":0.0,"relative_more":"infinity","std_dev":0.0},"samples":[188920824,188920824,188920824,188920824,188920824,188920824,188920824,188920824]},"tag":null};
+
+      var inputHeadline = ""
+
+      
+        drawRunTimeHistogram(scenario, inputHeadline);
+        drawRawRunTimeChart(scenario, inputHeadline);
+      
+
+      
+        if (scenario.memory_usage_data.statistics.std_dev !== 0) {
+          drawMemoryHistogram(scenario, inputHeadline);
+          drawRawMemoryChart(scenario, inputHeadline);
+        };
+      
+    </script>
+  </body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Benchee Report</title>
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html; charset=utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <link rel="stylesheet" type="text/css" href="assets/stylesheets/benchee.css">
+    <link rel="stylesheet" type="text/css" href="assets/fontello/css/fontello.css">
+  
+</head>
+
+  <body>
+
+    <div class="header">
+  <h1>benchee report</h1>
+  
+
+  <span class="version-note">
+  <a href="javascript:toggleSystemDataInfo();" title="Click to toggle system info">System info</a>
+</span>
+
+</div>
+
+
+    <article id="system-info" class="benchee-systeminfo" >
+  <h3>System info</h3>
+  <ul class="benchee-systeminfo-list">
+    <li>Elixir: 1.19.4</li>
+    <li>Erlang: 28.4</li>
+    <li>Operating system: macOS</li>
+    <li>Available memory: 32 GB</li>
+    <li>CPU Information: Apple M2 Pro</li>
+    <li>Number of Available Cores: 10</li>
+  </ul>
+</article>
+
+
+    
+      <article>
+        <h2>
+          <a name="run_time" href="#run_time">02. Rust NIF (list protocol — full copy) Run Time</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual run time distribution for 02. Rust NIF (list protocol — full copy).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+        <th>Iterations per Second</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">02. Rust NIF (list protocol — full copy)</td>
+        
+        
+          <td>48.16</td>
+          <td>20.76 ms</td>
+          <td>±7.08%</td>
+          <td>19.88 ms</td>
+          <td>19.89 ms, 19.66 ms</td>
+          <td>19.34 ms</td>
+          <td>26.37 ms</td>
+        
+        <td>482</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        <section class="benchee-plot-container">
+          <div id="run-times-histogram" class="plot"></div>
+        </section>
+        <section class="benchee-plot-container">
+          <div id="raw-run-times" class="plot"></div>
+        </section>
+      </article>
+    
+
+    
+      <article>
+        <h2>
+          <a name="memory" href="#memory">02. Rust NIF (list protocol — full copy) Memory</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual memory usage distribution for 02. Rust NIF (list protocol — full copy).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">02. Rust NIF (list protocol — full copy)</td>
+        
+        
+          <td>0 B</td>
+          <td>±0.00%</td>
+          <td>0 B</td>
+          <td>0 B</td>
+          <td>0 B</td>
+          <td>0 B</td>
+        
+        <td>57</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        
+      </article>
+    
+
+    <footer>
+      <a href="https://github.com/PragTob/benchee" target="blank">benchee version: 1.5.0 </a>
+<br/>
+<a href="https://github.com/PragTob/benchee_html" target="blank">benchee_html version: 1.0.1</a>
+
+
+    </footer>
+
+    
+  <script src="assets/javascripts/plotly-2.27.0.min.js"></script>
+  <script src="assets/javascripts/benchee.js"></script>
+
+
+
+    <script>
+      var scenario = {"name":"02. Rust NIF (list protocol — full copy)","job_name":"02. Rust NIF (list protocol — full copy)","input_name":"__no_input","run_time_data":{"statistics":{"maximum":26365865,"mode":[19892357,19664149],"sample_size":482,"average":20763321.9626556,"std_dev_ratio":0.07079954766069381,"ips":48.16185010272322,"std_dev_ips":3.409837201774944,"percentiles":{"25":19640887.25,"50":19880503.0,"75":22632547.75,"99":23391377.11},"median":19880503.0,"minimum":19337981,"outliers":[],"lower_outlier_bound":15153396.5,"upper_outlier_bound":27120038.5,"absolute_difference":9915499.190378372,"relative_less":0.5224512142993234,"relative_more":1.9140543128818892,"std_dev":1470033.8028893657},"samples":[19499273,19526356,26365865,19529190,19701607,22834986,19640939,19686148,22506069,19834191,19572315,22718444,19760774,20180191,22629652,19566690,19702941,22520527,20270483,19956607,22915485,19534857,19882733,22411902,19956773,19626566,22769235,19589023,19534981,23124653,19701399,19592773,22700777,20007607,19546940,22650485,19638065,19600731,22991986,19881441,20115233,22726360,19923066,19697898,22622777,20197232,19682940,22993152,19493815,19561732,22756694,19741148,19734566,22906277,19513983,19674773,22641235,19875608,19892357,23036819,20113899,19756607,23600363,19795273,19716691,22678277,19809773,19716857,22989527,20097983,19704899,22344734,19688941,19769939,22558818,19704233,20320857,22991319,19471816,19579981,22377652,19613440,19337981,22433027,19415273,19683731,22427527,19367773,19452398,22385777,19628981,19515024,22852693,19456648,19712857,23202152,19648066,19818690,22922528,19942564,20134983,22542402,19557649,19630648,22879277,19751482,19571148,23092820,19563148,19724649,23176860,19587816,19983856,22709610,19549815,19713398,22644610,19551941,19826814,22596568,19789107,19588814,22819110,19547732,19494232,22667027,19608940,19961149,22978777,19639941,20019149,22758986,19776523,20268733,23089193,19951482,20387399,22898945,20092773,19877233,23076153,19910065,19525024,23045319,19664149,19724856,22795318,19585565,20093316,22592027,19753065,19913857,22926402,19606483,19771940,22727569,19507982,20094066,22749653,20109439,19729357,22935527,19965608,19540357,22664569,19985107,19676441,22534235,19690690,19690816,23089235,19943858,19628606,22865903,19787398,19794983,22796693,19892357,20566732,23422986,19675648,19490690,22676944,19927441,19928732,22504318,19811899,19583856,22939985,20044733,19484358,22817527,19918065,19664149,22830569,19654066,19734439,22617986,19623690,19948316,23106278,19627689,19931816,22778736,19784899,19640732,22511943,19567106,19594607,22983402,19868441,19663981,22675527,19930899,19554064,22342568,20081982,19849648,22674277,19890024,19960441,22729527,20250024,20150274,22707568,19563815,19383314,22801944,20002066,19781106,22707152,19734899,19579982,22644735,19796065,19576232,22517027,19875732,19679273,22569777,19889524,19717607,22651485,19751108,19585273,22924320,19978065,19634816,22594444,19578814,19670274,22787860,19486648,20296024,22498027,20122649,19951733,22578360,19505689,19768731,23522486,19723274,19980941,22567777,19703273,20026357,22697069,19625899,20112190,22958360,19901482,19689231,22927152,20120357,19653232,22743152,19888316,20155774,22685944,19920232,19574190,22832069,19720649,19726273,22661027,19586315,19770774,22753527,19845066,19871565,22649402,19687649,19794607,22610818,19773024,19744691,22754443,19947231,19597149,22754944,19887941,20027108,22777110,19788731,19670191,22823985,19661523,19683857,23173360,19640566,19663690,22454902,19564273,19801108,23143236,19743565,19784441,22908569,19730315,19610648,22568319,19544439,19817608,22537985,19575023,19502190,22730610,19921191,19405314,23185528,20475691,19797357,22575777,19698565,19630690,22763152,21063941,19654648,22656444,19528024,20056774,22816360,19913440,19822023,22708735,19861524,19782232,22919320,19383856,19483898,22546610,19523106,19361023,22876236,19425814,19556356,22991112,19434523,19526982,22645444,19545273,19796315,22259193,20095108,19821233,22663777,19482482,19521773,23241611,19455606,19749857,22916361,19785983,19505023,22511111,19480064,19549856,22742444,19611565,19636607,22888361,19501023,19523773,23293903,19434398,19388356,22743902,19416356,19702774,22577319,19731731,19584899,22821611,19632523,20178524,22696652,19614441,19914399,22917735,19645356,19631691,22784985,19564357,19615191,22791319,19902482,19663691,22720277,20363191,19594399,22453443,19560566,19643106,22594777,19719858,19690981,22708943,19832649,19647815,22531652,19669566,19878357,22734611,19775191,19673939,22930861,19628732,19780483,22464026,19915274,20067857,22896360,19627358,19570731,22913444,19689316,20024357,22859860,20120399,20020233,22498277,19654607,19751899,23383570,19520315,19514189,22811402,19682524,19571981,23370445,19879066,19718273,22935235,19823690,19637941,22647110,20098565,19762357,22167068,19464774,20137316,23323235,19934607,19874524,22819361,19879565,19772981,22645194,19595816,19617606,22918443,19623066,19583898,23384903,19731357,19531689,22786444,19440898,19661190,23079777,19516981,19916774]},"memory_usage_data":{"statistics":{"maximum":0,"mode":0,"sample_size":57,"average":0.0,"std_dev_ratio":0.0,"ips":null,"std_dev_ips":null,"percentiles":{"25":0.0,"50":0.0,"75":0.0,"99":0.0},"median":0.0,"minimum":0,"outliers":[],"lower_outlier_bound":0.0,"upper_outlier_bound":0.0,"absolute_difference":0.0,"relative_less":1.0,"relative_more":1.0,"std_dev":0.0},"samples":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},"tag":null};
+
+      var inputHeadline = ""
+
+      
+        drawRunTimeHistogram(scenario, inputHeadline);
+        drawRawRunTimeChart(scenario, inputHeadline);
+      
+
+      
+        if (scenario.memory_usage_data.statistics.std_dev !== 0) {
+          drawMemoryHistogram(scenario, inputHeadline);
+          drawRawMemoryChart(scenario, inputHeadline);
+        };
+      
+    </script>
+  </body>
+</html>

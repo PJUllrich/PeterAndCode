@@ -91,7 +91,12 @@ defmodule SortingBench.CNodeSort do
   def stop(port, c_node_name) do
     send({:any, c_node_name}, {self(), :stop})
     Process.sleep(100)
-    Port.close(port)
+
+    try do
+      Port.close(port)
+    rescue
+      ArgumentError -> :ok
+    end
   end
 
   # -- private ----------------------------------------------------------------

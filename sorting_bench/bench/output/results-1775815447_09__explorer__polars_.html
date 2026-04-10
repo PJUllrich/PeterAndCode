@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Benchee Report</title>
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html; charset=utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <link rel="stylesheet" type="text/css" href="assets/stylesheets/benchee.css">
+    <link rel="stylesheet" type="text/css" href="assets/fontello/css/fontello.css">
+  
+</head>
+
+  <body>
+
+    <div class="header">
+  <h1>benchee report</h1>
+  
+
+  <span class="version-note">
+  <a href="javascript:toggleSystemDataInfo();" title="Click to toggle system info">System info</a>
+</span>
+
+</div>
+
+
+    <article id="system-info" class="benchee-systeminfo" >
+  <h3>System info</h3>
+  <ul class="benchee-systeminfo-list">
+    <li>Elixir: 1.19.4</li>
+    <li>Erlang: 28.4</li>
+    <li>Operating system: macOS</li>
+    <li>Available memory: 32 GB</li>
+    <li>CPU Information: Apple M2 Pro</li>
+    <li>Number of Available Cores: 10</li>
+  </ul>
+</article>
+
+
+    
+      <article>
+        <h2>
+          <a name="run_time" href="#run_time">09. Explorer (Polars) Run Time</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual run time distribution for 09. Explorer (Polars).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+        <th>Iterations per Second</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">09. Explorer (Polars)</td>
+        
+        
+          <td>35.45</td>
+          <td>28.21 ms</td>
+          <td>±8.93%</td>
+          <td>27.13 ms</td>
+          <td>none</td>
+          <td>24.28 ms</td>
+          <td>34.46 ms</td>
+        
+        <td>355</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        <section class="benchee-plot-container">
+          <div id="run-times-histogram" class="plot"></div>
+        </section>
+        <section class="benchee-plot-container">
+          <div id="raw-run-times" class="plot"></div>
+        </section>
+      </article>
+    
+
+    
+      <article>
+        <h2>
+          <a name="memory" href="#memory">09. Explorer (Polars) Memory</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual memory usage distribution for 09. Explorer (Polars).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">09. Explorer (Polars)</td>
+        
+        
+          <td>582424 B</td>
+          <td>±0.00%</td>
+          <td>582424 B</td>
+          <td>582424 B</td>
+          <td>582424 B</td>
+          <td>582424 B</td>
+        
+        <td>46</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        
+      </article>
+    
+
+    <footer>
+      <a href="https://github.com/PragTob/benchee" target="blank">benchee version: 1.5.0 </a>
+<br/>
+<a href="https://github.com/PragTob/benchee_html" target="blank">benchee_html version: 1.0.1</a>
+
+
+    </footer>
+
+    
+  <script src="assets/javascripts/plotly-2.27.0.min.js"></script>
+  <script src="assets/javascripts/benchee.js"></script>
+
+
+
+    <script>
+      var scenario = {"name":"09. Explorer (Polars)","job_name":"09. Explorer (Polars)","input_name":"__no_input","run_time_data":{"statistics":{"maximum":34464041,"mode":null,"sample_size":355,"average":28206692.825352114,"std_dev_ratio":0.08928730638205529,"ips":35.45257879722795,"std_dev_ips":3.165465265102049,"percentiles":{"25":26168073.0,"50":27129407.0,"75":30982704.0,"99":33294823.0},"median":27129407.0,"minimum":24277196,"outliers":[],"lower_outlier_bound":18946126.5,"upper_outlier_bound":38204650.5,"absolute_difference":17358870.053074885,"relative_less":0.38458329161252214,"relative_more":2.6002169668034525,"std_dev":2518499.624321735},"samples":[24277196,34464041,26394656,26060240,30949578,27216366,26179948,31178121,27542158,27641449,31687747,26761241,26522573,31395163,26291448,25892822,31239120,26859157,26222823,30977412,27243283,26232864,30822703,27270240,26789490,31800579,26670449,26733657,30904287,27171615,26711990,32115830,27196075,26488239,31047204,27144325,26944074,32928123,27355366,27514490,30665328,27284823,28314743,31437204,26047240,25644614,30891704,26995657,27844992,31680538,26719907,26342240,31802871,27677366,26980950,30706911,26420823,25780947,30916287,28351575,26665907,30982704,26237864,26289031,31392622,25278405,26009781,30833329,25189697,25513113,30473078,27023075,26634447,30845454,25775781,26073156,31184203,25444406,25966364,32900957,26649114,28231367,34033208,27350949,26411282,31891622,26420406,25879031,31184871,26327574,26961741,32309996,26194532,25553446,31137537,26388699,25541447,31286453,25376989,25727530,31177495,25040613,26125114,32146580,25336155,27012115,31639997,26016948,27884116,32538872,27598825,26344531,31193662,26092116,26207031,32454997,25728239,26107406,31411830,25441363,25504364,30927704,25708115,25482071,32792748,26090949,25914739,32147873,25666114,25126405,31651747,26538574,25752322,31023829,26433657,27515950,31355204,26782740,25921156,31251787,25600073,25388530,32344372,25401364,26267114,31097287,25508864,25250280,31741537,26081949,25821739,31725205,25506823,25693780,31615496,25260364,25642697,32929164,25620822,25447073,32492705,26583532,27610449,32669498,27541950,26008365,30872996,25046946,25547114,31539913,26004697,26594614,30713412,27505116,26904657,30420827,25938322,26169864,30623704,25594447,27396325,30835202,24982988,26411157,30744577,25872198,25585031,31048412,25224946,25857614,31864038,25471989,25528071,31897288,25326656,26133448,30744703,25473239,25866448,31020204,25240738,25956948,30552953,25817615,27102616,32779123,27256158,25809696,30727662,27312158,26561739,31446538,27820116,26831491,30716537,25777322,25430698,32407872,25226405,27694616,30715037,27929241,26185490,31576455,25873072,27119657,32165205,26705281,26234324,31809996,26245906,26877532,31753038,27357574,26025239,31342579,26213740,27035573,33644123,27841326,26728322,30994704,26242865,27423991,31809621,26479449,26770740,32287080,26236741,26952573,31994497,26553115,27846117,32463996,26022614,27246408,31836622,27369365,25935198,32129914,26968616,26677449,31634829,26338324,25689655,32046456,26645864,27517033,30972037,28047033,27591200,32545373,27332200,26166406,32866414,27131490,28295367,33020373,27700866,27002240,31888163,25802823,25779030,31464038,27212198,26006239,31241662,27102366,27874283,31091287,25528781,26061740,31170870,26283656,27303450,31191079,27485908,26014989,31467329,27145032,26400949,30891871,27087157,25860115,32863331,27129407,26919573,32217914,28016158,26573782,31800622,26291323,26191615,30578870,27956658,26753198,31054287,27069824,27584200,31695330,27037782,27851117,31613871,26645907,26672698,32127413,27078282,26156364,31893955,27047533,26168073,31410996,27400574,27516699,30687494,28278784,27086407,31133121,27293199,28180367,31685746,27907659,26187698,32007788,28074367,26800114,31371663,26732407,27106949,30374703,28729035,27098990,30908370,26111156,26700741]},"memory_usage_data":{"statistics":{"maximum":582424,"mode":582424,"sample_size":46,"average":582424.0,"std_dev_ratio":0.0,"ips":null,"std_dev_ips":null,"percentiles":{"25":582424.0,"50":582424.0,"75":582424.0,"99":582424.0},"median":582424.0,"minimum":582424,"outliers":[],"lower_outlier_bound":582424.0,"upper_outlier_bound":582424.0,"absolute_difference":582424.0,"relative_less":0.0,"relative_more":"infinity","std_dev":0.0},"samples":[582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424,582424]},"tag":null};
+
+      var inputHeadline = ""
+
+      
+        drawRunTimeHistogram(scenario, inputHeadline);
+        drawRawRunTimeChart(scenario, inputHeadline);
+      
+
+      
+        if (scenario.memory_usage_data.statistics.std_dev !== 0) {
+          drawMemoryHistogram(scenario, inputHeadline);
+          drawRawMemoryChart(scenario, inputHeadline);
+        };
+      
+    </script>
+  </body>
+</html>

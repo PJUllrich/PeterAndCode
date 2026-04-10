@@ -30,6 +30,11 @@ defmodule SortingBench.Verify do
     |> then(&verify_list!(name, &1, expected_sum))
   end
 
+  def pass!(name) do
+    IO.puts("  [PASS] #{name}")
+    :ok
+  end
+
   def sorted?(list) do
     Enum.reduce_while(list, :empty, fn
       x, :empty -> {:cont, x}

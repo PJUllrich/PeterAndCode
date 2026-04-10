@@ -3,11 +3,16 @@
 #
 # Measures copy cost + sorting speed across different approaches.
 #
-# Run (without C Node):
+# Run all (without C Node):
 #   mix run bench/run.exs
 #
-# Run (with C Node — requires distribution):
+# Run all (with C Node — requires distribution):
 #   elixir --sname bench --cookie sorting_bench -S mix run bench/run.exs
+#
+# Run specific scenarios (substring match, case-insensitive):
+#   mix run bench/run.exs -- port
+#   mix run bench/run.exs -- "rust nif" mmap
+#   elixir --sname bench --cookie sorting_bench -S mix run bench/run.exs -- "c node"
 # =============================================================================
 
 alias SortingBench.RustNif
@@ -73,22 +78,15 @@ port_sort_info =
 scenarios = %{
   # === Baselines ===
   "01a. Enum.sort (Elixir — fun call per comparison)" =>
-    {fn _input -> Enum.sort(list) end,
-     before_each: fn _ -> :ok end},
-
+    {fn _input -> Enum.sort(list) end, before_each: fn _ -> :ok end},
   "01b. :lists.sort (Erlang — native term comparison, no fun overhead)" =>
-    {fn _input -> :lists.sort(list) end,
-     before_each: fn _ -> :ok end},
+    {fn _input -> :lists.sort(list) end, before_each: fn _ -> :ok end},
 
   # === Rust NIFs ===
   "02. Rust NIF (list protocol — full copy)" =>
-    {fn _input -> RustNif.sort_list(list) end,
-     before_each: fn _ -> :ok end},
-
+    {fn _input -> RustNif.sort_list(list) end, before_each: fn _ -> :ok end},
   "03. Rust NIF (binary ref — safe copy)" =>
-    {fn _input -> RustNif.sort_binary(binary) end,
-     before_each: fn _ -> :ok end},
-
+    {fn _input -> RustNif.sort_binary(binary) end, before_each: fn _ -> :ok end},
   "04. Rust NIF (binary ref — in-place UNSAFE)" =>
     {fn input -> RustNif.sort_binary_inplace(input) end,
      before_each: fn _ -> :binary.copy(binary) end},
@@ -99,9 +97,7 @@ scenarios = %{
        RustNif.mmap_write(mmap, binary)
        RustNif.mmap_sort(mmap)
        RustNif.mmap_read(mmap)
-     end,
-     before_each: fn _ -> :ok end},
-
+     end, before_each: fn _ -> :ok end},
   "06. Rust NIF mmap (sort-only, data pre-loaded)" =>
     {fn _input -> RustNif.mmap_sort(mmap) end,
      before_each: fn _ ->
@@ -111,8 +107,7 @@ scenarios = %{
 
   # === Reference: pure native (generate + sort, zero BEAM overhead) ===
   "00. Rust NIF (generate+sort in Rust — reference)" =>
-    {fn _input -> RustNif.generate_and_sort(size) end,
-     before_each: fn _ -> :ok end},
+    {fn _input -> RustNif.generate_and_sort(size) end, before_each: fn _ -> :ok end},
 
   # === Elixir-instructed: data lives in Rust, Elixir just says "go" ===
   "00. Rust NIF (Elixir-instructed sort — measures NIF call overhead)" =>
@@ -121,8 +116,7 @@ scenarios = %{
 
   # === ETS ordered_set (AVL tree) ===
   "11. ETS ordered_set (AVL tree insert + tab2list)" =>
-    {fn _input -> SortingBench.EtsSort.sort(list) end,
-     before_each: fn _ -> :ok end}
+    {fn _input -> SortingBench.EtsSort.sort(list) end, before_each: fn _ -> :ok end}
 }
 
 # Conditionally add Nx (BinaryBackend)
@@ -232,7 +226,11 @@ Verify.verify_list!("ETS ordered_set", SortingBench.EtsSort.sort(list), expected
 
 # Nx — BinaryBackend (returns list)
 if nx_available? do
-  Verify.verify_list!("Nx BinaryBackend", SortingBench.NxSort.sort_binary_backend(list), expected_sum)
+  Verify.verify_list!(
+    "Nx BinaryBackend",
+    SortingBench.NxSort.sort_binary_backend(list),
+    expected_sum
+  )
 end
 
 # Nx — EXLA (returns list)
@@ -247,29 +245,75 @@ end
 
 # Port stdin/stdout (returns binary)
 if port_sort_info do
-  Verify.verify_binary!("Port stdin/stdout", SortingBench.PortSort.sort(port_sort_info, binary), expected_sum)
+  Verify.verify_binary!(
+    "Port stdin/stdout",
+    SortingBench.PortSort.sort(port_sort_info, binary),
+    expected_sum
+  )
 end
 
 # C Node (returns binary)
 case c_node_info do
   {_port, c_node_name} ->
-    Verify.verify_binary!("C Node distributed", SortingBench.CNodeSort.sort(c_node_name, binary), expected_sum)
-  nil -> :ok
+    Verify.verify_binary!(
+      "C Node distributed",
+      SortingBench.CNodeSort.sort(c_node_name, binary),
+      expected_sum
+    )
+
+  nil ->
+    :ok
 end
 
-# Reference runs (generate_and_sort, trigger_sort) return :ok — data stays
-# on the native side and never comes back. Cannot verify from Elixir.
-IO.puts("  [SKIP] Rust NIF generate+sort (data stays in Rust)")
-IO.puts("  [SKIP] Rust NIF trigger_sort (data stays in Rust)")
+# Reference runs return :ok — data stays native. Verify they don't crash.
+:ok = RustNif.generate_and_sort(size)
+Verify.pass!("Rust NIF generate+sort")
+
+ref = RustNif.prepare_sort(size)
+:ok = RustNif.trigger_sort(ref)
+Verify.pass!("Rust NIF trigger_sort")
 
 case c_node_info do
-  {_port, _} ->
-    IO.puts("  [SKIP] C Node generate+sort (data stays in C)")
-    IO.puts("  [SKIP] C Node trigger_sort (data stays in C)")
-  nil -> :ok
+  {_port, c_node_name} ->
+    :ok = SortingBench.CNodeSort.generate_and_sort(c_node_name, size)
+    Verify.pass!("C Node generate+sort")
+
+    SortingBench.CNodeSort.prepare_sort(c_node_name, size)
+    :ok = SortingBench.CNodeSort.trigger_sort(c_node_name)
+    Verify.pass!("C Node trigger_sort")
+
+  nil ->
+    :ok
 end
 
 IO.puts("Verification complete!\n")
+
+# -- Filter scenarios by CLI args (if any) ------------------------------------
+filters = System.argv()
+
+scenarios =
+  if filters == [] do
+    scenarios
+  else
+    filtered =
+      Enum.filter(scenarios, fn {name, _} ->
+        name_down = String.downcase(name)
+        Enum.any?(filters, fn f -> String.contains?(name_down, String.downcase(f)) end)
+      end)
+      |> Map.new()
+
+    if filtered == %{} do
+      IO.puts("No scenarios matched filters: #{inspect(filters)}")
+      IO.puts("Available scenarios:")
+      scenarios |> Map.keys() |> Enum.sort() |> Enum.each(&IO.puts("  #{&1}"))
+      System.halt(1)
+    end
+
+    IO.puts("Filtered to #{map_size(filtered)} scenario(s):")
+    filtered |> Map.keys() |> Enum.sort() |> Enum.each(&IO.puts("  #{&1}"))
+    IO.puts("")
+    filtered
+  end
 
 # -- Run Benchee --------------------------------------------------------------
 IO.puts("\n" <> String.duplicate("=", 70))
@@ -285,7 +329,8 @@ Benchee.run(
   print: [configuration: true, benchmarking: true],
   formatters: [
     Benchee.Formatters.Console,
-    {Benchee.Formatters.HTML, file: "bench/output/results.html", auto_open: false}
+    {Benchee.Formatters.HTML,
+     file: "bench/output/results-#{System.system_time(:second)}.html", auto_open: false}
   ]
 )
 

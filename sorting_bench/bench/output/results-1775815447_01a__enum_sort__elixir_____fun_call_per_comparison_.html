@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title>Benchee Report</title>
+  <meta charset="utf-8">
+  <meta http-equiv="content-type" content="text/html; charset=utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <link rel="stylesheet" type="text/css" href="assets/stylesheets/benchee.css">
+    <link rel="stylesheet" type="text/css" href="assets/fontello/css/fontello.css">
+  
+</head>
+
+  <body>
+
+    <div class="header">
+  <h1>benchee report</h1>
+  
+
+  <span class="version-note">
+  <a href="javascript:toggleSystemDataInfo();" title="Click to toggle system info">System info</a>
+</span>
+
+</div>
+
+
+    <article id="system-info" class="benchee-systeminfo" >
+  <h3>System info</h3>
+  <ul class="benchee-systeminfo-list">
+    <li>Elixir: 1.19.4</li>
+    <li>Erlang: 28.4</li>
+    <li>Operating system: macOS</li>
+    <li>Available memory: 32 GB</li>
+    <li>CPU Information: Apple M2 Pro</li>
+    <li>Number of Available Cores: 10</li>
+  </ul>
+</article>
+
+
+    
+      <article>
+        <h2>
+          <a name="run_time" href="#run_time">01a. Enum.sort (Elixir — fun call per comparison) Run Time</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual run time distribution for 01a. Enum.sort (Elixir — fun call per comparison).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+        <th>Iterations per Second</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">01a. Enum.sort (Elixir — fun call per comparison)</td>
+        
+        
+          <td>8.32</td>
+          <td>120.20 ms</td>
+          <td>±12.56%</td>
+          <td>112.49 ms</td>
+          <td>none</td>
+          <td>103.79 ms</td>
+          <td>166.62 ms</td>
+        
+        <td>84</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        <section class="benchee-plot-container">
+          <div id="run-times-histogram" class="plot"></div>
+        </section>
+        <section class="benchee-plot-container">
+          <div id="raw-run-times" class="plot"></div>
+        </section>
+      </article>
+    
+
+    
+      <article>
+        <h2>
+          <a name="memory" href="#memory">01a. Enum.sort (Elixir — fun call per comparison) Memory</a>
+          <a href="https://github.com/PragTob/benchee_html/wiki/Chart-Types#individual">
+            <i
+              class="benchee-help-icon icon-question-circle-o"
+              title="Graphs showing the individual memory usage distribution for 01a. Enum.sort (Elixir — fun call per comparison).
+  Run Times Histogram shows the distribution of occurrences of specific run times in buckets.
+  Raw Run Times shows all individual recorded run times in the order they were recorded in."
+            ></i>
+          </a>
+        </h2>
+
+        <section>
+          <table>
+  <thead>
+    <tr>
+      <th class="text-left">Name</th>
+      
+      <th>Average</th>
+      <th>Deviation</th>
+      <th>Median</th>
+      <th>Mode</th>
+      <th>Minimum</th>
+      <th>Maximum</th>
+      <th>Sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    
+      
+      <tr>
+        
+          <td class="text-left">01a. Enum.sort (Elixir — fun call per comparison)</td>
+        
+        
+          <td>216250496 B</td>
+          <td>±0.00%</td>
+          <td>216250496 B</td>
+          <td>216250496 B</td>
+          <td>216250496 B</td>
+          <td>216250496 B</td>
+        
+        <td>12</td>
+      </tr>
+    
+  </tbody>
+</table>
+
+        </section>
+
+        
+      </article>
+    
+
+    <footer>
+      <a href="https://github.com/PragTob/benchee" target="blank">benchee version: 1.5.0 </a>
+<br/>
+<a href="https://github.com/PragTob/benchee_html" target="blank">benchee_html version: 1.0.1</a>
+
+
+    </footer>
+
+    
+  <script src="assets/javascripts/plotly-2.27.0.min.js"></script>
+  <script src="assets/javascripts/benchee.js"></script>
+
+
+
+    <script>
+      var scenario = {"name":"01a. Enum.sort (Elixir — fun call per comparison)","job_name":"01a. Enum.sort (Elixir — fun call per comparison)","input_name":"__no_input","run_time_data":{"statistics":{"maximum":166618208,"mode":null,"sample_size":84,"average":120198734.65476191,"std_dev_ratio":0.12564684822263342,"ips":8.31955513402223,"std_dev_ips":1.0453258812043216,"percentiles":{"25":109206989.5,"50":112490854.0,"75":131853958.75,"99":166618208.0},"median":112490854.0,"minimum":103786625,"outliers":[166618208],"lower_outlier_bound":75236535.625,"upper_outlier_bound":165824412.625,"absolute_difference":109350911.88248467,"relative_less":0.09024905963806226,"relative_more":11.08044786295206,"std_dev":15102592.169719456},"samples":[112519083,111210958,106326750,109519792,107523417,105867917,111413917,111206083,114196250,103940833,104572584,103786625,106962708,109277833,109011500,109503709,107236125,109183375,109657833,104736875,105338708,108506792,105979917,108753833,108210292,109070833,109472875,109507959,111718666,113346708,112462625,115924667,137399750,136013958,111356125,118758959,109403042,115856167,108339542,110890708,141242500,138932959,137294791,108159125,110863584,165364875,110348459,141143583,112015209,138383958,134037250,137362083,125034667,126823958,139383291,110580125,160215417,108742833,132298542,111154208,129334042,130845583,127977542,120061792,122735625,135738750,110514291,166618208,113406417,135869083,113328250,136093042,131110459,128734208,120587500,122877625,137217500,111399333,163240084,108171458,132461958,113407584,132101792,129513875]},"memory_usage_data":{"statistics":{"maximum":216250496,"mode":216250496,"sample_size":12,"average":216250496.0,"std_dev_ratio":0.0,"ips":null,"std_dev_ips":null,"percentiles":{"25":216250496.0,"50":216250496.0,"75":216250496.0,"99":216250496.0},"median":216250496.0,"minimum":216250496,"outliers":[],"lower_outlier_bound":216250496.0,"upper_outlier_bound":216250496.0,"absolute_difference":216250496.0,"relative_less":0.0,"relative_more":"infinity","std_dev":0.0},"samples":[216250496,216250496,216250496,216250496,216250496,216250496,216250496,216250496,216250496,216250496,216250496,216250496]},"tag":null};
+
+      var inputHeadline = ""
+
+      
+        drawRunTimeHistogram(scenario, inputHeadline);
+        drawRawRunTimeChart(scenario, inputHeadline);
+      
+
+      
+        if (scenario.memory_usage_data.statistics.std_dev !== 0) {
+          drawMemoryHistogram(scenario, inputHeadline);
+          drawRawMemoryChart(scenario, inputHeadline);
+        };
+      
+    </script>
+  </body>
+</html>
