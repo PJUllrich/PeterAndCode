@@ -36,3 +36,5 @@ sorting_bench-*.tar
 
 # Shared memory file
 /dev/shm/sorting_bench_mmap
+
+/bench/output/

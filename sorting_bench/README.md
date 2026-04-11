@@ -650,8 +650,10 @@ Zero copy ◄──────────────────────�
 | Algorithm | Used by | Random | Presorted | Reverse sorted |
 |---|---|---|---|---|
 | **Merge sort** | Erlang (`:lists.sort`) | O(n log n) | O(n log n) | O(n log n) |
-| **pdqsort** (pattern-defeating quicksort) | Rust (`sort_unstable`) | O(n log n) | O(n) | O(n log n) |
+| **ipnsort** (in-place natural sort) | Rust (`sort_unstable`, since 1.81) | O(n log n) | O(n) | O(n log n) |
 | **Introsort** (quicksort + heapsort) | C++ `std::sort` (standalone bench + C Node) | O(n log n) | O(n log n) | O(n log n) |
+| **pdqsort** (pattern-defeating quicksort) | C++ standalone bench (`pdqsort.h` by Orson Peters) | O(n log n) | O(n) | O(n log n) |
+| **nanosort** (branchless Lomuto partition) | C++ standalone bench (`nanosort.hpp` by Arseny Kapoulkine) | O(n log n) | O(n log n) | O(n log n) |
 | **AVL tree insert** | ETS `ordered_set` | O(n log n) | O(n log n) | O(n log n) |
 | **Quicksort** (Elixir on `:atomics`) | Atomics | O(n log n) | O(n log n) | O(n^2)* |
 | **Radix/introsort hybrid** | Polars (Explorer) | O(n log n) | O(n log n) | O(n log n) |
@@ -662,7 +664,13 @@ All algorithms are O(n log n) in the average/worst case. The key difference
 is **constant factors**: cache behavior, branch prediction, and whether the
 comparator is inlined (`std::sort`) or called via a function pointer (`qsort`).
 pdqsort stands out by detecting presorted runs in O(n), giving it a
-significant edge on partially sorted inputs.
+significant edge on partially sorted inputs. nanosort uses a branchless
+Lomuto partition scheme that minimizes branch mispredictions, making it
+the fastest C++ option on random data in these benchmarks.
+
+Note: Rust's `sort_unstable` was originally pdqsort but was replaced with
+**ipnsort** (in-place natural sort by Lukas Bergdoll) in Rust 1.81+, which
+is faster still. There is no C++ port of ipnsort.
 
 ---
 
@@ -725,7 +733,8 @@ Results with HTML reports are saved to `rust_bench/target/criterion/`.
 ./c_bench/bench_sort
 ```
 
-Measures pure C++ `std::sort` with no BEAM involvement.
+Measures four C/C++ sort algorithms with no BEAM involvement:
+`qsort` (C stdlib), `std::sort` (introsort), `pdqsort`, and `nanosort`.
 Same scenarios as the Rust benchmark for direct comparison.
 
 ### Unsafe Binary Mutation Demo

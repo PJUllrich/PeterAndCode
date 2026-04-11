@@ -2,7 +2,7 @@
 
 CXX      = g++
 BENCH_PREFIX = $(shell brew --prefix google-benchmark 2>/dev/null)
-CXXFLAGS = -O3 -Wall -Wextra -std=c++23 -I$(BENCH_PREFIX)/include
+CXXFLAGS = -O3 -march=native -Wall -Wextra -std=c++23 -I$(BENCH_PREFIX)/include
 LDFLAGS  = -L$(BENCH_PREFIX)/lib -lbenchmark -lpthread
 
 .PHONY: all clean
