@@ -66,18 +66,18 @@ Sorting 1,000,000 random `i64` integers.
 
 Rust `sort_unstable` (pdqsort) via Criterion.
 
-| Benchmark | Time |
-|-----------|-----:|
-| generate_and_sort | 12.74 ms |
-| sort_only | 10.96 ms |
-| sort_presorted | 394.86 us |
-| sort_reverse_sorted | 10.35 ms |
+| Benchmark | Time | ips |
+|-----------|-----:|----:|
+| generate_and_sort | 12.74 ms | 78.49 |
+| sort_only | 10.96 ms | 91.24 |
+| sort_presorted | 394.86 us | 2,532.55 |
+| sort_reverse_sorted | 10.35 ms | 96.62 |
 
 ## C Benchmark
 
 Run on Apple Silicon (10 cores). Google Benchmark with `min_time:2.000`.
 
-| Benchmark | Time | items/s |
+| Benchmark | Time | ips |
 |-----------|-----:|--------:|
 | qsort — generate_and_sort | 80.5 ms | 12.41 M/s |
 | qsort — sort_only | 78.8 ms | 12.69 M/s |
