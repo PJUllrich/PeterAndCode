@@ -23,6 +23,17 @@ list = SortingBench.generate_data(size)
 binary = SortingBench.list_to_binary(list)
 IO.puts("Data ready: list of #{length(list)} elements, binary of #{byte_size(binary)} bytes\n")
 
+# Cheap per-iteration randomization: shuffle the first 1000 elements.
+# This prevents adaptive algorithms from benefiting across iterations
+# without the cost of generating a full 1M-element list each time.
+shuffle_head = fn list ->
+  {head, tail} = Enum.split(list, 1000)
+  Enum.shuffle(head) ++ tail
+end
+
+fresh_list = fn _ -> shuffle_head.(list) end
+fresh_binary = fn _ -> list |> shuffle_head.() |> SortingBench.list_to_binary() end
+
 # -- Setup mmap resource (reused across iterations) ---------------------------
 IO.puts("Setting up mmap shared memory region...")
 mmap = RustNif.mmap_create(size)
@@ -33,11 +44,13 @@ nx_available? = Code.ensure_loaded?(Nx)
 exla_available? = Code.ensure_loaded?(EXLA.Backend)
 explorer_available? = Code.ensure_loaded?(Explorer.Series)
 dux_available? = Code.ensure_loaded?(Dux)
+f_enum_available? = Code.ensure_loaded?(FEnum)
 
 unless nx_available?, do: IO.puts("Nx not available — skipping Nx benchmarks.")
 unless exla_available?, do: IO.puts("EXLA not available — skipping EXLA benchmark.")
 unless explorer_available?, do: IO.puts("Explorer not available — skipping Explorer benchmark.")
 unless dux_available?, do: IO.puts("Dux not available — skipping Dux benchmark.")
+unless f_enum_available?, do: IO.puts("FEnum not available — skipping FEnum benchmark.")
 
 # -- Setup C Node (optional — requires distribution) --------------------------
 c_node_info =
@@ -77,125 +90,185 @@ port_sort_info =
   end
 
 # -- Build benchmark scenarios ------------------------------------------------
+
+# ─── GROUP A: From list (full round-trip, list in → sorted list out) ─────────
 scenarios = %{
-  # === Baselines ===
-  "01a. Enum.sort (Elixir — fun call per comparison)" =>
-    {fn _input -> Enum.sort(list) end, before_each: fn _ -> :ok end},
-  "01b. :lists.sort (Erlang — native term comparison, no fun overhead)" =>
-    {fn _input -> :lists.sort(list) end, before_each: fn _ -> :ok end},
+  # Pure BEAM baselines
+  "A01a. Enum.sort (Elixir — fun call per comparison)" =>
+    {fn input -> Enum.sort(input) end, before_each: fresh_list},
+  "A01b. :lists.sort (Erlang — native term comparison)" =>
+    {fn input -> :lists.sort(input) end, before_each: fresh_list},
 
-  # === Rust NIFs ===
-  "02. Rust NIF (list protocol — full copy)" =>
-    {fn _input -> RustNif.sort_list(list) end, before_each: fn _ -> :ok end},
-  "03. Rust NIF (binary ref — safe copy)" =>
-    {fn _input -> RustNif.sort_binary(binary) end, before_each: fn _ -> :ok end},
-  "04. Rust NIF (binary ref — in-place UNSAFE)" =>
-    {fn input -> RustNif.sort_binary_inplace(input) end,
-     before_each: fn _ -> :binary.copy(binary) end},
+  # Rust NIF — list protocol (Rustler decodes/encodes list in Rust)
+  "A02. Rust NIF (list protocol — full copy)" =>
+    {fn input -> RustNif.sort_list(input) end, before_each: fresh_list},
 
-  # === Shared memory ===
-  "05. Rust NIF mmap (full: write+sort+read)" =>
-    {fn _input ->
-       RustNif.mmap_write(mmap, binary)
+  # Rust NIF — Elixir-side binary conversion round-trip
+  "A03. Rust NIF binary round-trip (list→binary→sort→list)" =>
+    {fn input ->
+       bin = SortingBench.list_to_binary(input)
+       sorted_bin = RustNif.sort_binary(bin)
+       SortingBench.binary_to_list(sorted_bin)
+     end, before_each: fresh_list},
+
+  # Rust NIF — mmap round-trip
+  "A04. Rust NIF mmap round-trip (list→binary→mmap→sort→mmap→list)" =>
+    {fn input ->
+       bin = SortingBench.list_to_binary(input)
+       RustNif.mmap_write(mmap, bin)
+       RustNif.mmap_sort(mmap)
+       sorted_bin = RustNif.mmap_read(mmap)
+       SortingBench.binary_to_list(sorted_bin)
+     end, before_each: fresh_list},
+
+  # ETS ordered_set (AVL tree)
+  "A05. ETS ordered_set (AVL tree insert + tab2list)" =>
+    {fn input -> SortingBench.EtsSort.sort(input) end, before_each: fresh_list},
+
+  # Atomics (quicksort in Elixir on off-heap array)
+  "A06. Atomics (quicksort on off-heap i64 array)" =>
+    {fn input -> SortingBench.AtomicsSort.sort(input) end, before_each: fresh_list},
+
+  # Overhead baseline — list↔binary conversion without sorting
+  "A00. List↔binary conversion (no sort — measures overhead)" =>
+    {fn input ->
+       bin = SortingBench.list_to_binary(input)
+       SortingBench.binary_to_list(bin)
+     end, before_each: fresh_list},
+
+  # ─── GROUP B: From binary (binary in → sorted binary out) ──────────────────
+
+  # Rust NIF — binary ref, safe copy
+  "B01. Rust NIF (binary ref — safe copy)" =>
+    {fn input -> RustNif.sort_binary(input) end, before_each: fresh_binary},
+
+  # Rust NIF — binary ref, in-place (UNSAFE)
+  "B02. Rust NIF (binary ref — in-place UNSAFE)" =>
+    {fn input -> RustNif.sort_binary_inplace(input) end, before_each: fresh_binary},
+
+  # Rust NIF — mmap full cycle (write + sort + read)
+  "B03. Rust NIF mmap (full: write+sort+read)" =>
+    {fn input ->
+       RustNif.mmap_write(mmap, input)
        RustNif.mmap_sort(mmap)
        RustNif.mmap_read(mmap)
-     end, before_each: fn _ -> :ok end},
-  "06. Rust NIF mmap (sort-only, data pre-loaded)" =>
+     end, before_each: fresh_binary},
+
+  # Rust NIF — mmap sort-only (data pre-loaded)
+  "B04. Rust NIF mmap (sort-only, data pre-loaded)" =>
     {fn _input -> RustNif.mmap_sort(mmap) end,
      before_each: fn _ ->
-       RustNif.mmap_write(mmap, binary)
+       RustNif.mmap_write(mmap, shuffle_head.(list) |> SortingBench.list_to_binary())
        :ok
      end},
 
-  # === Reference: pure native (generate + sort, zero BEAM overhead) ===
-  "00. Rust NIF (generate+sort in Rust — reference)" =>
+  # ─── GROUP R: Reference (no BEAM data, measures pure native speed) ─────────
+
+  "R01. Rust NIF (generate+sort in Rust — reference)" =>
     {fn _input -> RustNif.generate_and_sort(size) end, before_each: fn _ -> :ok end},
 
-  # === Elixir-instructed: data lives in Rust, Elixir just says "go" ===
-  "00. Rust NIF (Elixir-instructed sort — measures NIF call overhead)" =>
+  "R02. Rust NIF (Elixir-instructed sort — measures NIF call overhead)" =>
     {fn input -> RustNif.trigger_sort(input) end,
-     before_each: fn _ -> RustNif.prepare_sort(size) end},
-
-  # === ETS ordered_set (AVL tree) ===
-  "11. ETS ordered_set (AVL tree insert + tab2list)" =>
-    {fn _input -> SortingBench.EtsSort.sort(list) end, before_each: fn _ -> :ok end},
-
-  # === Atomics (mutable off-heap i64 array, quicksort in Elixir) ===
-  "13. Atomics (quicksort on off-heap i64 array)" =>
-    {fn _input -> SortingBench.AtomicsSort.sort(list) end, before_each: fn _ -> :ok end}
+     before_each: fn _ -> RustNif.prepare_sort(size) end}
 }
 
-# Conditionally add Nx (BinaryBackend)
+# Conditionally add Nx (BinaryBackend) — Group A
 scenarios =
   if nx_available? do
-    Map.put(scenarios, "07. Nx (BinaryBackend)", {
-      fn _input -> SortingBench.NxSort.sort_binary_backend(list) end,
-      before_each: fn _ -> :ok end
+    Map.put(scenarios, "A07. Nx (BinaryBackend)", {
+      fn input -> SortingBench.NxSort.sort_binary_backend(input) end,
+      before_each: fresh_list
     })
   else
     scenarios
   end
 
-# Conditionally add EXLA
+# Conditionally add EXLA — Group A
 scenarios =
   if exla_available? do
-    Map.put(scenarios, "08. Nx (EXLA)", {
-      fn _input -> SortingBench.NxSort.sort_exla_backend(list) end,
-      before_each: fn _ -> :ok end
+    Map.put(scenarios, "A08. Nx (EXLA)", {
+      fn input -> SortingBench.NxSort.sort_exla_backend(input) end,
+      before_each: fresh_list
     })
   else
     scenarios
   end
 
-# Conditionally add Explorer
+# Conditionally add Explorer — Group A
 scenarios =
   if explorer_available? do
-    Map.put(scenarios, "09. Explorer (Polars)", {
-      fn _input -> SortingBench.ExplorerSort.sort(list) end,
-      before_each: fn _ -> :ok end
+    Map.put(scenarios, "A09. Explorer (Polars)", {
+      fn input -> SortingBench.ExplorerSort.sort(input) end,
+      before_each: fresh_list
     })
   else
     scenarios
   end
 
-# Conditionally add Dux (DuckDB)
+# Conditionally add Dux — Group A
 scenarios =
   if dux_available? do
-    Map.put(scenarios, "14. Dux (DuckDB)", {
-      fn _input -> SortingBench.DuxSort.sort(list) end,
-      before_each: fn _ -> :ok end
+    Map.put(scenarios, "A10. Dux (DuckDB)", {
+      fn input -> SortingBench.DuxSort.sort(input) end,
+      before_each: fresh_list
     })
   else
     scenarios
   end
 
-# Conditionally add Port sort
+# Conditionally add FEnum — Group A
+scenarios =
+  if f_enum_available? do
+    Map.put(scenarios, "A11. FEnum (NIF round-trip: list→Rust→sort→list)", {
+      fn input -> FEnum.sort(input) end,
+      before_each: fresh_list
+    })
+  else
+    scenarios
+  end
+
+# Conditionally add Port sort — Group A (list round-trip) + Group B (binary)
 scenarios =
   if port_sort_info do
     port = port_sort_info
 
-    Map.put(scenarios, "12. Port stdin/stdout (Rust via pipe)", {
-      fn _input -> SortingBench.PortSort.sort(port, binary) end,
-      before_each: fn _ -> :ok end
+    scenarios
+    |> Map.put("A12. Port round-trip (list→binary→pipe→sort→pipe→list)", {
+      fn input ->
+        bin = SortingBench.list_to_binary(input)
+        sorted_bin = SortingBench.PortSort.sort(port, bin)
+        SortingBench.binary_to_list(sorted_bin)
+      end, before_each: fresh_list
+    })
+    |> Map.put("B05. Port stdin/stdout (Rust via pipe)", {
+      fn input -> SortingBench.PortSort.sort(port, input) end,
+      before_each: fresh_binary
     })
   else
     scenarios
   end
 
-# Conditionally add C Node
+# Conditionally add C Node — Group A (list round-trip) + Group B (binary) + Group R (reference)
 scenarios =
   case c_node_info do
     {_port, c_node_name} ->
       scenarios
-      |> Map.put("10. C Node (distributed Erlang)", {
-        fn _input -> SortingBench.CNodeSort.sort(c_node_name, binary) end,
-        before_each: fn _ -> :ok end
+      |> Map.put("A13. C Node round-trip (list→binary→dist→sort→dist→list)", {
+        fn input ->
+          bin = SortingBench.list_to_binary(input)
+          sorted_bin = SortingBench.CNodeSort.sort(c_node_name, bin)
+          SortingBench.binary_to_list(sorted_bin)
+        end, before_each: fresh_list
       })
-      |> Map.put("00. C Node (generate+sort in C — reference)", {
+      |> Map.put("B06. C Node (distributed Erlang)", {
+        fn input -> SortingBench.CNodeSort.sort(c_node_name, input) end,
+        before_each: fresh_binary
+      })
+      |> Map.put("R03. C Node (generate+sort in C — reference)", {
         fn _input -> SortingBench.CNodeSort.generate_and_sort(c_node_name, size) end,
         before_each: fn _ -> :ok end
       })
-      |> Map.put("00. C Node (Elixir-instructed sort — measures dist overhead)", {
+      |> Map.put("R04. C Node (Elixir-instructed sort — measures dist overhead)", {
         fn _input -> SortingBench.CNodeSort.trigger_sort(c_node_name) end,
         before_each: fn _ ->
           SortingBench.CNodeSort.prepare_sort(c_node_name, size)
@@ -213,84 +286,93 @@ alias SortingBench.Verify
 expected_sum = Enum.sum(list)
 IO.puts("\nVerifying all approaches (expected sum: #{expected_sum})...")
 
-# Baselines (return lists)
+# ─── Group A: from list ───
 Verify.verify_list!("Enum.sort", Enum.sort(list), expected_sum)
 Verify.verify_list!(":lists.sort", :lists.sort(list), expected_sum)
-
-# Rust NIF — list protocol (returns list)
 Verify.verify_list!("Rust NIF list protocol", RustNif.sort_list(list), expected_sum)
 
-# Rust NIF — binary safe copy (returns binary)
-Verify.verify_binary!("Rust NIF binary safe", RustNif.sort_binary(binary), expected_sum)
+roundtrip_bin = list |> SortingBench.list_to_binary() |> RustNif.sort_binary() |> SortingBench.binary_to_list()
+Verify.verify_list!("Rust NIF binary round-trip", roundtrip_bin, expected_sum)
 
-# Rust NIF — binary in-place UNSAFE (returns :ok, mutates binary)
-inplace_copy = :binary.copy(binary)
-:ok = RustNif.sort_binary_inplace(inplace_copy)
-Verify.verify_binary!("Rust NIF binary in-place", inplace_copy, expected_sum)
-
-# Rust NIF — mmap full cycle (write + sort + read → returns binary)
-RustNif.mmap_write(mmap, binary)
+mmap_rt_bin = SortingBench.list_to_binary(list)
+RustNif.mmap_write(mmap, mmap_rt_bin)
 RustNif.mmap_sort(mmap)
-Verify.verify_binary!("Rust NIF mmap full cycle", RustNif.mmap_read(mmap), expected_sum)
+mmap_rt_result = RustNif.mmap_read(mmap) |> SortingBench.binary_to_list()
+Verify.verify_list!("Rust NIF mmap round-trip", mmap_rt_result, expected_sum)
 
-# Rust NIF — mmap sort-only (verify via mmap_read after sort)
-RustNif.mmap_write(mmap, binary)
-RustNif.mmap_sort(mmap)
-Verify.verify_binary!("Rust NIF mmap sort-only", RustNif.mmap_read(mmap), expected_sum)
-
-# ETS ordered_set (returns list)
 Verify.verify_list!("ETS ordered_set", SortingBench.EtsSort.sort(list), expected_sum)
-
-# Atomics quicksort (returns list)
 Verify.verify_list!("Atomics quicksort", SortingBench.AtomicsSort.sort(list), expected_sum)
 
-# Nx — BinaryBackend (returns list)
-if nx_available? do
-  Verify.verify_list!(
-    "Nx BinaryBackend",
-    SortingBench.NxSort.sort_binary_backend(list),
-    expected_sum
-  )
+# List↔binary conversion overhead (no sort — verify round-trip preserves data)
+conversion_result = list |> SortingBench.list_to_binary() |> SortingBench.binary_to_list()
+if conversion_result == list do
+  Verify.pass!("List↔binary conversion")
+else
+  raise "VERIFY FAILED [List↔binary conversion]: round-trip changed data"
 end
 
-# Nx — EXLA (returns list)
+if nx_available? do
+  Verify.verify_list!("Nx BinaryBackend", SortingBench.NxSort.sort_binary_backend(list), expected_sum)
+end
+
 if exla_available? do
   Verify.verify_list!("Nx EXLA", SortingBench.NxSort.sort_exla_backend(list), expected_sum)
 end
 
-# Explorer (returns list)
 if explorer_available? do
   Verify.verify_list!("Explorer Polars", SortingBench.ExplorerSort.sort(list), expected_sum)
 end
 
-# Dux / DuckDB (returns list)
 if dux_available? do
   Verify.verify_list!("Dux DuckDB", SortingBench.DuxSort.sort(list), expected_sum)
 end
 
-# Port stdin/stdout (returns binary)
-if port_sort_info do
-  Verify.verify_binary!(
-    "Port stdin/stdout",
-    SortingBench.PortSort.sort(port_sort_info, binary),
-    expected_sum
-  )
+if f_enum_available? do
+  Verify.verify_list!("FEnum sort", FEnum.sort(list), expected_sum)
 end
 
-# C Node (returns binary)
+if port_sort_info do
+  port_rt = SortingBench.list_to_binary(list)
+    |> then(&SortingBench.PortSort.sort(port_sort_info, &1))
+    |> SortingBench.binary_to_list()
+  Verify.verify_list!("Port round-trip", port_rt, expected_sum)
+end
+
 case c_node_info do
   {_port, c_node_name} ->
-    Verify.verify_binary!(
-      "C Node distributed",
-      SortingBench.CNodeSort.sort(c_node_name, binary),
-      expected_sum
-    )
-
-  nil ->
-    :ok
+    c_rt = SortingBench.list_to_binary(list)
+      |> then(&SortingBench.CNodeSort.sort(c_node_name, &1))
+      |> SortingBench.binary_to_list()
+    Verify.verify_list!("C Node round-trip", c_rt, expected_sum)
+  nil -> :ok
 end
 
-# Reference runs return :ok — data stays native. Verify they don't crash.
+# ─── Group B: from binary ───
+Verify.verify_binary!("Rust NIF binary safe", RustNif.sort_binary(binary), expected_sum)
+
+inplace_copy = :binary.copy(binary)
+:ok = RustNif.sort_binary_inplace(inplace_copy)
+Verify.verify_binary!("Rust NIF binary in-place", inplace_copy, expected_sum)
+
+RustNif.mmap_write(mmap, binary)
+RustNif.mmap_sort(mmap)
+Verify.verify_binary!("Rust NIF mmap full cycle", RustNif.mmap_read(mmap), expected_sum)
+
+RustNif.mmap_write(mmap, binary)
+RustNif.mmap_sort(mmap)
+Verify.verify_binary!("Rust NIF mmap sort-only", RustNif.mmap_read(mmap), expected_sum)
+
+if port_sort_info do
+  Verify.verify_binary!("Port stdin/stdout", SortingBench.PortSort.sort(port_sort_info, binary), expected_sum)
+end
+
+case c_node_info do
+  {_port, c_node_name} ->
+    Verify.verify_binary!("C Node distributed", SortingBench.CNodeSort.sort(c_node_name, binary), expected_sum)
+  nil -> :ok
+end
+
+# ─── Group R: reference (no BEAM data) ───
 :ok = RustNif.generate_and_sort(size)
 Verify.pass!("Rust NIF generate+sort")
 
@@ -306,9 +388,7 @@ case c_node_info do
     SortingBench.CNodeSort.prepare_sort(c_node_name, size)
     :ok = SortingBench.CNodeSort.trigger_sort(c_node_name)
     Verify.pass!("C Node trigger_sort")
-
-  nil ->
-    :ok
+  nil -> :ok
 end
 
 IO.puts("Verification complete!\n")

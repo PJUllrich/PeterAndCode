@@ -206,4 +206,38 @@ fn trigger_sort(resource: ResourceArc<SortDataResource>) -> Atom {
     atoms::ok()
 }
 
+// =============================================================================
+// NIF round-trip: list in → sort → list out (single NIF call)
+//
+// Takes an Elixir list, Rustler decodes it into Vec<i64> in native code,
+// sorts in-place, and Rustler encodes back to an Elixir list.
+// This avoids the slow Elixir-side list↔binary conversion.
+// =============================================================================
+#[rustler::nif(schedule = "DirtyCpu")]
+fn sort_list_roundtrip(list: Vec<i64>) -> Vec<i64> {
+    let mut v = list;
+    v.sort_unstable();
+    v
+}
+
+// =============================================================================
+// NIF round-trip: list in → sort → binary out (single NIF call)
+//
+// Same as above but returns a packed binary instead of a list.
+// Useful when the caller wants the result as a binary.
+// =============================================================================
+#[rustler::nif(schedule = "DirtyCpu")]
+fn sort_list_to_binary(list: Vec<i64>) -> OwnedBinary {
+    let mut v = list;
+    v.sort_unstable();
+
+    let byte_len = v.len() * std::mem::size_of::<i64>();
+    let mut owned = OwnedBinary::new(byte_len).unwrap();
+    let bytes = unsafe {
+        std::slice::from_raw_parts(v.as_ptr() as *const u8, byte_len)
+    };
+    owned.as_mut_slice().copy_from_slice(bytes);
+    owned
+}
+
 rustler::init!("Elixir.SortingBench.RustNif");

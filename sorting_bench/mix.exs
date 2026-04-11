@@ -20,7 +20,7 @@ defmodule SortingBench.MixProject do
   defp deps do
     [
       # Rust NIF integration
-      {:rustler, "~> 0.36"},
+      {:rustler, "~> 0.37", override: true},
 
       # Benchmarking
       {:benchee, "~> 1.3"},
@@ -34,7 +34,10 @@ defmodule SortingBench.MixProject do
       {:explorer, "~> 0.10"},
 
       # Dux (DuckDB-backed DataFrames)
-      {:dux, "~> 0.3.0"}
+      {:dux, "~> 0.3.0"},
+
+      # FEnum (NIF-accelerated Enum operations)
+      {:f_enum, "~> 0.1"}
     ]
   end
 end

@@ -30,4 +30,10 @@ defmodule SortingBench.RustNif do
 
   @doc "Sort pre-generated data in Rust (Elixir-instructed, minimal overhead)"
   def trigger_sort(_resource), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc "NIF round-trip: list in → sort → list out (single NIF call)"
+  def sort_list_roundtrip(_list), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc "NIF round-trip: list in → sort → binary out (single NIF call)"
+  def sort_list_to_binary(_list), do: :erlang.nif_error(:nif_not_loaded)
 end
