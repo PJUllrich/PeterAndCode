@@ -31,7 +31,10 @@ defmodule SortingBench.MixProject do
       {:exla, "~> 0.9"},
 
       # Explorer (Polars-backed DataFrames)
-      {:explorer, "~> 0.10"}
+      {:explorer, "~> 0.10"},
+
+      # Dux (DuckDB-backed DataFrames)
+      {:dux, "~> 0.3.0"}
     ]
   end
 end

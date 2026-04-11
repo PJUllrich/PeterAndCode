@@ -524,6 +524,87 @@ Pipe buffer is typically 64 KB, so the kernel must do many small transfers.
 
 ---
 
+### 13. Atomics (quicksort on off-heap i64 array)
+
+**Sort engine:** Pure Elixir quicksort on `:atomics` array
+**Copy cost:** List → atomics (n atomic writes) + atomics → list (n atomic reads)
+
+```
+Elixir list
+  │
+  │  For each element: :atomics.put(arr, i, value)
+  │  Writes each integer into a fixed-size, off-heap, mutable array
+  │  of 64-bit atomic integers.
+  │  COPY IN: n atomic writes (each with memory barrier)
+  │
+  ▼
+:atomics array (off-heap, mutable, 64-bit signed integers)
+  │
+  │  Quicksort implemented in pure Elixir:
+  │  Every comparison = :atomics.get (atomic read)
+  │  Every swap = 2x :atomics.get + 2x :atomics.put (atomic ops)
+  │  O(n log n) atomic operations total
+  │
+  ▼
+Sorted :atomics array
+  │
+  │  For each element: :atomics.get(arr, i)
+  │  Reads back into a new Elixir list.
+  │  COPY OUT: n atomic reads + list construction
+  │
+  ▼
+Sorted Elixir list
+```
+
+**Pros:** Uses a true mutable array — no linked list overhead for the sort
+itself. `:atomics` is built into OTP, no external dependencies. The array
+is off-heap and process-safe, so a parallel sort is theoretically possible.
+
+**Cons:** Every array access goes through an atomic operation with a memory
+barrier, which is massive overkill for single-threaded sorting. The sort
+algorithm runs in interpreted Elixir, not native code. A fun curiosity,
+not a practical approach.
+
+---
+
+### 14. Dux (DuckDB)
+
+**Sort engine:** DuckDB's analytical SQL engine
+**Copy cost:** List → DataFrame (one conversion) + sort + DataFrame → list (one conversion)
+
+```
+Elixir list
+  │
+  │  Enum.map(&%{v: &1}) to wrap each integer in a map
+  │  Dux.from_list(list_of_maps) — converts to a DuckDB-backed DataFrame.
+  │  Data is transferred from the BEAM into DuckDB's columnar storage.
+  │  COPY IN: O(n) conversion via ADBC/NIF
+  │
+  ▼
+DuckDB table (columnar, off-heap)
+  │
+  │  Dux.sort_by(:v) — compiles to SQL ORDER BY, executed by DuckDB.
+  │  DuckDB uses an optimized sort (typically radix sort for integers).
+  │
+  ▼
+Sorted DuckDB result set
+  │
+  │  Dux.to_columns() — transfers sorted data back to Elixir.
+  │  COPY OUT: O(n) conversion via ADBC/NIF
+  │
+  ▼
+Sorted Elixir list
+```
+
+**Pros:** DuckDB is a high-performance analytical engine. If your data is
+already in DuckDB (e.g., loaded from Parquet/CSV), the sort is nearly free.
+Lazy evaluation means operations can be fused.
+
+**Cons:** Two conversions (list↔DataFrame). Wrapping integers in maps for
+`from_list` adds overhead. Overkill for sorting — DuckDB is a full SQL engine.
+
+---
+
 ## Reference Benchmarks (Elixir-instructed)
 
 These benchmarks isolate the BEAM↔native communication overhead:
@@ -553,13 +634,13 @@ exactly how much wall time is spent on copying/serialization.
 ## Copy Cost Spectrum
 
 ```
-Zero copy ◄──────────────────────────────────────────────────────────────────► Maximum copy
+Zero copy ◄──────────────────────────────────────────────────────────────────────────► Maximum copy
 
- NIF          NIF binary    NIF binary    mmap full    NIF list      Port        C Node       ETS
- trigger_sort in-place      safe copy     cycle        protocol      pipe        dist TCP     ordered_set
- (0 copies)   (0 copies)    (1 memcpy)    (2 memcpy)   (2 list       (4 kernel   (4 ETF       (2n term
-              UNSAFE                                    walks)        copies)     serialize    copies +
-                                                                                  + TCP)       AVL tree)
+ NIF          NIF binary    NIF binary    mmap full    NIF list    Explorer/   Port        C Node       Atomics      ETS
+ trigger_sort in-place      safe copy     cycle        protocol    Dux         pipe        dist TCP     (:atomics)   ordered_set
+ (0 copies)   (0 copies)    (1 memcpy)    (2 memcpy)   (2 list     (2 NIF      (4 kernel   (4 ETF       (2n atomic   (2n term
+              UNSAFE                                    walks)      conv)       copies)     serialize    ops)         copies +
+                                                                                            + TCP)                    AVL tree)
 ```
 
 ---
@@ -572,7 +653,9 @@ Zero copy ◄──────────────────────�
 | **pdqsort** (pattern-defeating quicksort) | Rust (`sort_unstable`) | O(n log n) | O(n) | O(n log n) |
 | **Introsort** (quicksort + heapsort) | C++ `std::sort` (standalone bench + C Node) | O(n log n) | O(n log n) | O(n log n) |
 | **AVL tree insert** | ETS `ordered_set` | O(n log n) | O(n log n) | O(n log n) |
+| **Quicksort** (Elixir on `:atomics`) | Atomics | O(n log n) | O(n log n) | O(n^2)* |
 | **Radix/introsort hybrid** | Polars (Explorer) | O(n log n) | O(n log n) | O(n log n) |
+| **Radix sort** | DuckDB (Dux) | O(n log n) | O(n log n) | O(n log n) |
 | **XLA JIT-compiled sort** | Nx (EXLA) | O(n log n) | O(n log n) | O(n log n) |
 
 All algorithms are O(n log n) in the average/worst case. The key difference

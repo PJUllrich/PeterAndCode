@@ -32,10 +32,12 @@ IO.puts("mmap ready\n")
 nx_available? = Code.ensure_loaded?(Nx)
 exla_available? = Code.ensure_loaded?(EXLA.Backend)
 explorer_available? = Code.ensure_loaded?(Explorer.Series)
+dux_available? = Code.ensure_loaded?(Dux)
 
 unless nx_available?, do: IO.puts("Nx not available — skipping Nx benchmarks.")
 unless exla_available?, do: IO.puts("EXLA not available — skipping EXLA benchmark.")
 unless explorer_available?, do: IO.puts("Explorer not available — skipping Explorer benchmark.")
+unless dux_available?, do: IO.puts("Dux not available — skipping Dux benchmark.")
 
 # -- Setup C Node (optional — requires distribution) --------------------------
 c_node_info =
@@ -116,7 +118,11 @@ scenarios = %{
 
   # === ETS ordered_set (AVL tree) ===
   "11. ETS ordered_set (AVL tree insert + tab2list)" =>
-    {fn _input -> SortingBench.EtsSort.sort(list) end, before_each: fn _ -> :ok end}
+    {fn _input -> SortingBench.EtsSort.sort(list) end, before_each: fn _ -> :ok end},
+
+  # === Atomics (mutable off-heap i64 array, quicksort in Elixir) ===
+  "13. Atomics (quicksort on off-heap i64 array)" =>
+    {fn _input -> SortingBench.AtomicsSort.sort(list) end, before_each: fn _ -> :ok end}
 }
 
 # Conditionally add Nx (BinaryBackend)
@@ -146,6 +152,17 @@ scenarios =
   if explorer_available? do
     Map.put(scenarios, "09. Explorer (Polars)", {
       fn _input -> SortingBench.ExplorerSort.sort(list) end,
+      before_each: fn _ -> :ok end
+    })
+  else
+    scenarios
+  end
+
+# Conditionally add Dux (DuckDB)
+scenarios =
+  if dux_available? do
+    Map.put(scenarios, "14. Dux (DuckDB)", {
+      fn _input -> SortingBench.DuxSort.sort(list) end,
       before_each: fn _ -> :ok end
     })
   else
@@ -224,6 +241,9 @@ Verify.verify_binary!("Rust NIF mmap sort-only", RustNif.mmap_read(mmap), expect
 # ETS ordered_set (returns list)
 Verify.verify_list!("ETS ordered_set", SortingBench.EtsSort.sort(list), expected_sum)
 
+# Atomics quicksort (returns list)
+Verify.verify_list!("Atomics quicksort", SortingBench.AtomicsSort.sort(list), expected_sum)
+
 # Nx — BinaryBackend (returns list)
 if nx_available? do
   Verify.verify_list!(
@@ -241,6 +261,11 @@ end
 # Explorer (returns list)
 if explorer_available? do
   Verify.verify_list!("Explorer Polars", SortingBench.ExplorerSort.sort(list), expected_sum)
+end
+
+# Dux / DuckDB (returns list)
+if dux_available? do
+  Verify.verify_list!("Dux DuckDB", SortingBench.DuxSort.sort(list), expected_sum)
 end
 
 # Port stdin/stdout (returns binary)
